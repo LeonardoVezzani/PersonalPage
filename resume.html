@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leonardo Vezzani &ndash; PhD Student - XR &amp; Automotive (Research coordination &amp; teaching)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
+  <script data-cfasync="false">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            github: {
+              canvas: {
+                default: '#ffffff',
+                subtle: '#f6f8fa',
+                dark: '#22272e',
+                'dark-subtle': '#2d333b'
+              },
+              border: {
+                default: '#d0d7de',
+                dark: '#444c56'
+              },
+              fg: {
+                default: '#24292f',
+                muted: '#57606a',
+                dark: '#e6edf3',
+                'dark-muted': '#9198a1'
+              },
+              accent: {
+                emphasis: '#0969da',
+                dark: '#539bf5'
+              }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script data-cfasync="false">
+    // Apply theme before body renders to prevent flicker
+    // Must run before Tailwind processes the page
+    (function() {
+      const savedTheme = localStorage.getItem('theme') || 'system';
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else if (savedTheme === 'system') {
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        if (systemTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      }
+    })();
+  </script>
+  <style>
+    /* Prevent flash of unstyled content */
+    html {
+      background-color: #ffffff;
+      color: #24292f;
+    }
+
+    html.dark {
+      background-color: rgb(33, 40, 48);
+      color: #e6edf3;
+    }
+
+    body {
+      min-height: 100vh;
+      background-color: inherit;
+    }
+
+    /* Lighter text colors for dark mode */
+    .dark .text-github-fg-dark {
+      color: #e6edf3 !important;
+    }
+
+    .dark .text-github-fg-dark-muted {
+      color: #adbac7 !important;
+    }
+
+    .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+      color: #e6edf3 !important;
+    }
+
+    .dark .glass-tile {
+      color: #e6edf3;
+    }
+
+    .dark .glass-tile .text-github-fg-muted {
+      color: #adbac7 !important;
+    }
+
+    /* GitHub Brand frosted glass tiles */
+    .glass-tile {
+      background: rgba(246, 248, 250, 0.7) !important;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(208, 215, 222, 0.5) !important;
+      border-radius: 8px !important;
+      box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+    }
+
+    .dark .glass-tile {
+      background: rgba(45, 51, 59, 0.7) !important;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(68, 76, 86, 0.5) !important;
+      box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.3),
+        0 2px 4px -1px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: white !important;
+      }
+      .glass-tile {
+        background: white !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="text-github-fg-default dark:text-github-fg-dark">
+
+  <!-- Theme Toggle Button -->
+  <div class="no-print fixed z-50" style="top: max(1rem, env(safe-area-inset-top)); right: max(1rem, calc(50vw - 32rem - 4rem));">
+    <button id="theme-toggle" class="p-2 rounded-lg bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors" title="Theme">
+      <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+      </svg>
+      <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path>
+      </svg>
+      <svg id="theme-toggle-system-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"></path>
+      </svg>
+    </button>
+  </div>
+
+  <div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
+
+    <!-- Header / Basics Section -->
+    <header class="mb-8 md:mb-12">
+      <div class="flex flex-row items-center gap-4 md:gap-6 mb-4">
+        <div class="flex-1 min-w-0">
+          <h1 class="text-4xl font-bold mb-2">Leonardo Vezzani</h1>
+          <p class="text-xl text-github-fg-muted dark:text-github-fg-dark-muted">PhD Student - XR &amp; Automotive (Research coordination &amp; teaching)</p>
+        </div>
+      </div>
+      <p class="text-base text-github-fg-muted dark:text-github-fg-dark-muted leading-relaxed mb-6">PhD student in Computer and Multimedia Engineering with a strong focus on XR (AR/VR), simulation, and experimental research tools. Experienced in designing, implementing, and validating simulation-based workflows for automotive and human–machine interaction studies, with particular attention to reproducibility and methodological rigor. Actively involved in coordinating research activities, mentoring students, and supporting collaborative projects across academia and industry. Comfortable working hands-on with complex technical systems while contributing to experimental design, documentation, and long-term research infrastructure.</p>
+
+      <!-- Contact Information -->
+      <div class="flex flex-wrap gap-3 md:gap-4 text-sm">
+        <a href="mailto:leonardo.vezzani@proton.me" class="flex items-center gap-2 text-github-accent-emphasis dark:text-github-accent-dark hover:underline">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+          </svg>
+          leonardo.vezzani@proton.me
+        </a>
+        <a href="tel:3920155950" class="flex items-center gap-2 text-github-accent-emphasis dark:text-github-accent-dark hover:underline">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path>
+          </svg>
+          3920155950
+        </a>
+      </div>
+
+      <!-- Profiles -->
+      <div class="flex flex-wrap gap-3 mt-4">
+        <a href="https://www.linkedin.com/in/leonardo-vezzani/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-md hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors" title="LinkedIn: Leonardo Vezzani">
+          <!-- GitHub Icon -->
+          <!-- LinkedIn Icon -->
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+          </svg>
+          <!-- Twitter/X Icon -->
+          <!-- Instagram Icon -->
+          <!-- Facebook Icon -->
+          <!-- YouTube Icon -->
+          <!-- Default Icon for other networks -->
+          <span>LinkedIn</span>
+        </a>
+        <a href="https://www.polito.it/personale?p&#x3D;leonardo.vezzani" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-md hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors" title="Politecnico di Torino: Leonardo Vezzani">
+          <!-- GitHub Icon -->
+          <!-- LinkedIn Icon -->
+          <!-- Twitter/X Icon -->
+          <!-- Instagram Icon -->
+          <!-- Facebook Icon -->
+          <!-- YouTube Icon -->
+          <!-- Default Icon for other networks -->
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          <span>Politecnico di Torino</span>
+        </a>
+        <a href="https://github.com/LeonardoVezzani/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-md hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors" title="GitHub: Leonardo Vezzani">
+          <!-- GitHub Icon -->
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          <!-- LinkedIn Icon -->
+          <!-- Twitter/X Icon -->
+          <!-- Instagram Icon -->
+          <!-- Facebook Icon -->
+          <!-- YouTube Icon -->
+          <!-- Default Icon for other networks -->
+          <span>GitHub</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Skills -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Skills</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <h3 class="font-semibold mb-2">XR &amp; Simulation</h3>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">AR / VR / XR</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Computer Graphics</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Unity</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Unreal Engine</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">CARLA Driving Simulator</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Automotive HUDs</span>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Research &amp; Engineering</h3>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Experimental design</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Prototyping</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">User Experience (UX)</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Data analysis</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Scientific writing</span>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Collaboration &amp; Coordination</h3>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Team leadership</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Project management</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Teaching</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Thesis supervision</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Interdisciplinary collaboration</span>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Personal &amp; Creative Interests</h3>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">3D printing</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Arts and crafts</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Photography</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Hiking</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Trekking</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Mountaineering</span>
+            <span class="px-2 py-1 text-sm bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded font-mono">Overlanding</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Work Experience -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Work Experience</h2>
+      <div class="space-y-6">
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+            <div>
+              <h3 class="text-xl font-semibold">PhD Student – In-Car AR Head-Up Displays</h3>
+              <p class="text-github-fg-muted dark:text-github-fg-dark-muted">
+                Politecnico di Torino
+                <span class="inline-flex items-center gap-1 ml-2">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                  </svg>
+                  Turin, Italy
+                </span>
+              </p>
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">
+              2022 → Present
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-3">PhD research focused on AR interfaces for automotive head-up displays, with emphasis on VR-based testing and the development of standardized research tools using the CARLA driving simulator.</p>
+          <ul class="list-disc list-outside pl-5 space-y-1 text-github-fg-muted dark:text-github-fg-dark-muted">
+            <li>Designed and developed VR-based testing workflows for automotive AR HUD evaluation</li>
+            <li>Contributed to the creation of a standardized research tool built on CARLA</li>
+            <li>Worked closely with supervisors, students, and industry partners</li>
+            <li>Combined hands-on development with research planning and evaluation</li>
+          </ul>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+            <div>
+              <h3 class="text-xl font-semibold">Teaching Activities (Co-Lecturer &amp; Thesis Supervisor)</h3>
+              <p class="text-github-fg-muted dark:text-github-fg-dark-muted">
+                Politecnico di Torino
+                <span class="inline-flex items-center gap-1 ml-2">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                  </svg>
+                  Turin, Italy
+                </span>
+              </p>
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">
+              2023 → Present
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-3">Teaching and supervision activities in programming, computer architectures, and computer graphics.</p>
+          <ul class="list-disc list-outside pl-5 space-y-1 text-github-fg-muted dark:text-github-fg-dark-muted">
+            <li>Co-lecturer in first-year programming courses</li>
+            <li>Taught Python and computer architectures</li>
+            <li>Supervised master theses in Computer Graphics and Vision</li>
+            <li>Supported students in project organization and technical decision-making</li>
+          </ul>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+            <div>
+              <h3 class="text-xl font-semibold">Research Assistant</h3>
+              <p class="text-github-fg-muted dark:text-github-fg-dark-muted">
+                Reply
+                <span class="inline-flex items-center gap-1 ml-2">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                  </svg>
+                  Turin, Italy
+                </span>
+              </p>
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">
+              2023 → 2025
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-3">Research and development activities in XR and simulation within Reply clusters.</p>
+          <ul class="list-disc list-outside pl-5 space-y-1 text-github-fg-muted dark:text-github-fg-dark-muted">
+            <li>AR development for warehouse operation and navigation</li>
+            <li>Integration of CARLA into a ROS2-based high-fidelity driving simulator</li>
+            <li>Collaboration with multidisciplinary engineering teams</li>
+          </ul>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+            <div>
+              <h3 class="text-xl font-semibold">Visiting PhD Student</h3>
+              <p class="text-github-fg-muted dark:text-github-fg-dark-muted">
+                Computer Vision Center (CVC)
+                <span class="inline-flex items-center gap-1 ml-2">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                  </svg>
+                  Barcelona, Spain
+                </span>
+              </p>
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">
+              2025 → 2025
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-3">Research visit focused on combining AR HUDs and autonomous vehicle research for explainable AI and driving experience studies.</p>
+          <ul class="list-disc list-outside pl-5 space-y-1 text-github-fg-muted dark:text-github-fg-dark-muted">
+            <li>Worked on explainable AI for driving experience evaluation</li>
+            <li>Coordinated with international research teams</li>
+            <li>Contributed tto defining workflows of experimental design and analysis</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Education -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Education</h2>
+      <div class="space-y-4">
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start">
+            <div>
+              <h3 class="text-xl font-semibold">MSc in Cinema and Multimedia Engineering</h3>
+              <p class="text-github-fg-muted dark:text-github-fg-dark-muted">
+                Politecnico di Torino
+              </p>
+              
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">
+              2019 → 2022
+            </div>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start">
+            <div>
+              <h3 class="text-xl font-semibold">BSc in Cinema and Multimedia Engineering</h3>
+              <p class="text-github-fg-muted dark:text-github-fg-dark-muted">
+                Politecnico di Torino
+              </p>
+              
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">
+              2015 → 2019
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Projects -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Projects</h2>
+      <div class="space-y-4">
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-2">
+            <div>
+              <h3 class="text-xl font-semibold">
+                HoloACLS – AR Training for Medical First Responders
+              </h3>
+              
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">
+              2022 → 2023
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-2">Development of MRTK-based AR interfaces for a medical training simulator on HoloLens 2.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">AR</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Unity</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Medical training</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">HoloLens</span>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-2">
+            <div>
+              <h3 class="text-xl font-semibold">
+                XR Experiences Design &amp; Prototyping
+              </h3>
+              
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">
+              2020 → 2021
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-2">Collaboration with the National Film Board of Canada on storytelling-oriented XR experience design.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">XR</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Storytelling</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Prototyping</span>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-2">
+            <div>
+              <h3 class="text-xl font-semibold">
+                Nexa City – Digital Platform for Internet &amp; Society
+              </h3>
+              <p class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted">internship</p>
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">
+              2018 → 2018
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-2">Web design and development internship at the Nexa Center for Internet &amp; Society, focused on the creation of &#x27;Nexa City&#x27;, a digital platform for sharing interviews, articles, and podcasts on internet governance, digital rights, and technology policy.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Web development</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Digital rights</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Internet governance</span>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-2">
+            <div>
+              <h3 class="text-xl font-semibold">
+                Virtual Tour – Museo Paleontologico di Asti
+              </h3>
+              <p class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted">cultural project</p>
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">
+              2019
+            </div>
+          </div>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-2">Collaboration with the Museo Paleontologico di Asti on the design and development of a virtual tour aimed at supporting digital access, education, and public engagement with the museum’s collections.</p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Virtual tour</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Cultural heritage</span>
+            <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Science communication</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Awards -->
+
+    <!-- Certificates -->
+
+    <!-- Publications -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Publications</h2>
+      <div class="space-y-4">
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start">
+            <div>
+              <h3 class="font-semibold">
+                Towards CARLA VR: testing Head-up Displays in CARLA driving simulator
+              </h3>
+              <p class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted">Future of Information and Communication Conference</p>
+              
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">2025</div>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start">
+            <div>
+              <h3 class="font-semibold">
+                AR for warehouses: a marker-based augmented system for navigation and inventory management
+              </h3>
+              <p class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted">ICCSCC</p>
+              
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">2024</div>
+          </div>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start">
+            <div>
+              <h3 class="font-semibold">
+                The WalkingSeat: A Leaning Interface for Locomotion in Virtual Environments
+              </h3>
+              <p class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted">EuroXR</p>
+              
+            </div>
+            <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0">2023</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Volunteer -->
+
+    <!-- Languages -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Languages</h2>
+      <div class="flex flex-wrap gap-3">
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg px-4 py-2">
+          <span class="font-medium">Italian</span>
+          <span class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted"> - Native</span>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg px-4 py-2">
+          <span class="font-medium">English</span>
+          <span class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted"> - Fluent</span>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg px-4 py-2">
+          <span class="font-medium">French</span>
+          <span class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted"> - Basic</span>
+        </div>
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg px-4 py-2">
+          <span class="font-medium">Spanish</span>
+          <span class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted"> - Basic</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interests -->
+    <section class="mb-8">
+      <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Interests</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Human-centered and ethical technology</h3>
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 text-sm text-github-fg-muted dark:text-github-fg-dark-muted">Education</span>
+            <span class="px-2 py-1 text-sm text-github-fg-muted dark:text-github-fg-dark-muted">Digital rights</span>
+            <span class="px-2 py-1 text-sm text-github-fg-muted dark:text-github-fg-dark-muted">XR for social impact</span>
+            <span class="px-2 py-1 text-sm text-github-fg-muted dark:text-github-fg-dark-muted">Outdoor activities</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- References -->
+
+  </div>
+
+  <script>
+    // Theme toggle functionality
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+    const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+    const themeToggleSystemIcon = document.getElementById('theme-toggle-system-icon');
+
+    function updateIcon(theme) {
+      themeToggleDarkIcon.classList.add('hidden');
+      themeToggleLightIcon.classList.add('hidden');
+      themeToggleSystemIcon.classList.add('hidden');
+
+      if (theme === 'dark') {
+        themeToggleDarkIcon.classList.remove('hidden');
+      } else if (theme === 'light') {
+        themeToggleLightIcon.classList.remove('hidden');
+      } else {
+        themeToggleSystemIcon.classList.remove('hidden');
+      }
+    }
+
+    function applyTheme(theme) {
+      if (theme === 'system') {
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.classList.toggle('dark', systemTheme === 'dark');
+      } else {
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+      }
+      updateIcon(theme);
+    }
+
+    // Check for saved theme preference or default to system
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    applyTheme(savedTheme);
+
+    // Toggle theme on button click (cycles through light -> dark -> system)
+    themeToggleBtn.addEventListener('click', function() {
+      const currentTheme = localStorage.getItem('theme') || 'system';
+      let newTheme;
+
+      if (currentTheme === 'light') {
+        newTheme = 'dark';
+      } else if (currentTheme === 'dark') {
+        newTheme = 'system';
+      } else {
+        newTheme = 'light';
+      }
+
+      localStorage.setItem('theme', newTheme);
+      applyTheme(newTheme);
+    });
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      const savedTheme = localStorage.getItem('theme') || 'system';
+      if (savedTheme === 'system') {
+        applyTheme('system');
+      }
+    });
+  </script>
+</body>
+</html>

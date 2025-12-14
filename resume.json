@@ -1,0 +1,231 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",
+  "basics": {
+    "name": "Leonardo Vezzani",
+    "label": "PhD Student - XR & Automotive (Research coordination & teaching)",
+    "image": "",
+    "email": "leonardo.vezzani@proton.me",
+    "phone": "3920155950",
+    "url": "",
+    "summary": "PhD student in Computer and Multimedia Engineering with a strong focus on XR (AR/VR), simulation, and experimental research tools. Experienced in designing, implementing, and validating simulation-based workflows for automotive and human–machine interaction studies, with particular attention to reproducibility and methodological rigor. Actively involved in coordinating research activities, mentoring students, and supporting collaborative projects across academia and industry. Comfortable working hands-on with complex technical systems while contributing to experimental design, documentation, and long-term research infrastructure.",
+  "profiles": [
+      {
+        "network": "LinkedIn",
+        "username": "Leonardo Vezzani",
+        "url": "https://www.linkedin.com/in/leonardo-vezzani/"
+      },
+      {
+        "network": "Politecnico di Torino",
+        "username": "Leonardo Vezzani",
+        "url": "https://www.polito.it/personale?p=leonardo.vezzani"
+      },
+      {
+        "network": "GitHub",
+        "username": "Leonardo Vezzani",
+        "url": "https://github.com/LeonardoVezzani/"
+      }
+    ]
+  },
+
+  "skills": [
+    {
+      "name": "XR & Simulation",
+      "keywords": [
+        "AR / VR / XR",
+        "Computer Graphics",
+        "Unity",
+        "Unreal Engine",
+        "CARLA Driving Simulator",
+        "Automotive HUDs"
+      ]
+    },
+    {
+      "name": "Research & Engineering",
+      "keywords": [
+        "Experimental design",
+        "Prototyping",
+        "User Experience (UX)",
+        "Data analysis",
+        "Scientific writing"
+      ]
+    },
+    {
+      "name": "Collaboration & Coordination",
+      "keywords": [
+        "Team leadership",
+        "Project management",
+        "Teaching",
+        "Thesis supervision",
+        "Interdisciplinary collaboration"
+      ]
+    },
+    {
+      "name": "Personal & Creative Interests",
+      "keywords": [
+        "3D printing",
+        "Arts and crafts",
+        "Photography",
+        "Hiking",
+        "Trekking",
+        "Mountaineering",
+        "Overlanding"
+      ]
+    }
+  ],
+
+  "work": [
+    {
+      "name": "Politecnico di Torino",
+      "location": "Turin, Italy",
+      "position": "PhD Student – In-Car AR Head-Up Displays",
+      "startDate": "2022-11",
+      "summary": "PhD research focused on AR interfaces for automotive head-up displays, with emphasis on VR-based testing and the development of standardized research tools using the CARLA driving simulator.",
+      "highlights": [
+        "Designed and developed VR-based testing workflows for automotive AR HUD evaluation",
+        "Contributed to the creation of a standardized research tool built on CARLA",
+        "Worked closely with supervisors, students, and industry partners",
+        "Combined hands-on development with research planning and evaluation"
+      ]
+    },
+    {
+      "name": "Politecnico di Torino",
+      "location": "Turin, Italy",
+      "position": "Teaching Activities (Co-Lecturer & Thesis Supervisor)",
+      "startDate": "2023-10",
+      "summary": "Teaching and supervision activities in programming, computer architectures, and computer graphics.",
+      "highlights": [
+        "Co-lecturer in first-year programming courses",
+        "Taught Python and computer architectures",
+        "Supervised master theses in Computer Graphics and Vision",
+        "Supported students in project organization and technical decision-making"
+      ]
+    },
+    {
+      "name": "Reply",
+      "location": "Turin, Italy",
+      "position": "Research Assistant",
+      "startDate": "2023-11",
+      "endDate": "2025-01",
+      "summary": "Research and development activities in XR and simulation within Reply clusters.",
+      "highlights": [
+        "AR development for warehouse operation and navigation",
+        "Integration of CARLA into a ROS2-based high-fidelity driving simulator",
+        "Collaboration with multidisciplinary engineering teams"
+      ]
+    },
+    {
+      "name": "Computer Vision Center (CVC)",
+      "location": "Barcelona, Spain",
+      "position": "Visiting PhD Student",
+      "startDate": "2025-02",
+      "endDate": "2025-08",
+      "summary": "Research visit focused on combining AR HUDs and autonomous vehicle research for explainable AI and driving experience studies.",
+      "highlights": [
+        "Worked on explainable AI for driving experience evaluation",
+        "Coordinated with international research teams",
+        "Contributed tto defining workflows of experimental design and analysis"
+      ]
+    }
+  ],
+
+  "education": [
+    {
+      "institution": "Politecnico di Torino",
+      "area": "Cinema and Multimedia Engineering",
+      "studyType": "MSc",
+      "startDate": "2019",
+      "endDate": "2022",
+      "summary": "Thesis: \"Locomotion Interface for Virtual Reality based on seat pressure mapping\""
+    },
+    {
+      "institution": "Politecnico di Torino",
+      "area": "Cinema and Multimedia Engineering",
+      "studyType": "BSc",
+      "startDate": "2015",
+      "endDate": "2019"
+    }
+  ],
+
+  "projects": [
+    {
+      "name": "HoloACLS – AR Training for Medical First Responders",
+      "startDate": "2022-06",
+      "endDate": "2023-03",
+      "description": "Development of MRTK-based AR interfaces for a medical training simulator on HoloLens 2.",
+      "keywords": ["AR", "Unity", "Medical training", "HoloLens"]
+    },
+    {
+      "name": "XR Experiences Design & Prototyping",
+      "startDate": "2020-10",
+      "endDate": "2021-01",
+      "description": "Collaboration with the National Film Board of Canada on storytelling-oriented XR experience design.",
+      "keywords": ["XR", "Storytelling", "Prototyping"]
+    },
+    {
+      "name": "Nexa City – Digital Platform for Internet & Society",
+      "startDate": "2018-04",
+      "endDate": "2018-09",
+      "description": "Web design and development internship at the Nexa Center for Internet & Society, focused on the creation of 'Nexa City', a digital platform for sharing interviews, articles, and podcasts on internet governance, digital rights, and technology policy.",
+      "keywords": [  "Web development", "Digital rights", "Internet governance"],
+      "type": "internship"
+    },
+    {
+      "name": "Virtual Tour – Museo Paleontologico di Asti",
+      "startDate": "2019",
+      "description": "Collaboration with the Museo Paleontologico di Asti on the design and development of a virtual tour aimed at supporting digital access, education, and public engagement with the museum’s collections.",
+      "keywords": [
+        "Virtual tour",
+        "Cultural heritage",
+        "Science communication"
+      ],
+      "type": "cultural project"
+    }
+
+  ],
+
+  "publications": [
+    {
+      "name": "Towards CARLA VR: testing Head-up Displays in CARLA driving simulator",
+      "publisher": "Future of Information and Communication Conference",
+      "releaseDate": "2025"
+    },
+    {
+      "name": "AR for warehouses: a marker-based augmented system for navigation and inventory management",
+      "publisher": "ICCSCC",
+      "releaseDate": "2024"
+    },
+    {
+      "name": "The WalkingSeat: A Leaning Interface for Locomotion in Virtual Environments",
+      "publisher": "EuroXR",
+      "releaseDate": "2023"
+    }
+  ],
+
+  "languages": [
+    { "language": "Italian", "fluency": "Native" },
+    { "language": "English", "fluency": "Fluent" },
+    { "language": "French", "fluency": "Basic" },
+    { "language": "Spanish", "fluency": "Basic" }
+  ],
+
+  "interests": [
+    {
+      "name": "Human-centered and ethical technology",
+      "keywords": [
+        "Education",
+        "Digital rights",
+        "XR for social impact",
+        "Outdoor activities"
+      ]
+    }
+  ],
+
+  "references": [],
+  
+  "meta": {
+    "canonical": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/sample.resume.json",
+    "version": "v1.0.0",
+    "lastModified": "2025-12-11"
+  }
+}
+
