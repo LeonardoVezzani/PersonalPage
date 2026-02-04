@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Portfolio — Your Name</title>
+  <link rel="stylesheet" href="assets/css/portfolio.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="brand" href="index.html">← Back to CV</a>
+      <h1>Portfolio</h1>
+      <p class="lead">A collection of projects grouped by application area.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Example carousel section: copy this block for each area -->
+    <section class="portfolio-section" id="web-apps">
+      <h2 class="section-title">Web Apps</h2>
+      <div class="carousel" data-carousel>
+        <div class="carousel-track">
+          <figure class="carousel-slide">
+            <img src="assets/portfolio/web-apps/1.jpg" alt="Screenshot of Project A" loading="lazy" />
+            <figcaption>Project A — Dashboard view</figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="assets/portfolio/web-apps/2.jpg" alt="Screenshot of Project B" loading="lazy" />
+            <figcaption>Project B — Mobile layout</figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="assets/portfolio/web-apps/3.jpg" alt="Screenshot of Project C" loading="lazy" />
+            <figcaption>Project C — Interactive chart</figcaption>
+          </figure>
+        </div>
+
+        <button class="carousel-btn prev" aria-label="Previous slide">‹</button>
+        <button class="carousel-btn next" aria-label="Next slide">›</button>
+
+        <div class="carousel-indicators" role="tablist" aria-label="Slide indicators"></div>
+      </div>
+    </section>
+
+    <!-- Another area -->
+    <section class="portfolio-section" id="data-viz">
+      <h2 class="section-title">Data Visualization</h2>
+      <div class="carousel" data-carousel>
+        <div class="carousel-track">
+          <figure class="carousel-slide">
+            <img src="assets/portfolio/data-viz/1.jpg" alt="Chart: sales by region" loading="lazy" />
+            <figcaption>Sales by region</figcaption>
+          </figure>
+          <figure class="carousel-slide">
+            <img src="assets/portfolio/data-viz/2.jpg" alt="Interactive time series" loading="lazy" />
+            <figcaption>Interactive time series</figcaption>
+          </figure>
+        </div>
+
+        <button class="carousel-btn prev" aria-label="Previous slide">‹</button>
+        <button class="carousel-btn next" aria-label="Next slide">›</button>
+
+        <div class="carousel-indicators" role="tablist" aria-label="Slide indicators"></div>
+      </div>
+    </section>
+
+    <!-- Add more sections/carousels as needed -->
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>© Your Name</small>
+    </div>
+  </footer>
+
+  <script src="assets/js/portfolio.js"></script>
+</body>
+</html>
