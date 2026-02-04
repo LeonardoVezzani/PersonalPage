@@ -184,6 +184,11 @@
   ],
 
   "publications": [
+     {
+      "name": "A Review of Automotive AR-HUD Interfaces Across Driver Roles and Vehicle Automation Levels",
+      "publisher": "IEEE Transactions on Intelligent Transportation Systems (Printing)",
+      "releaseDate": "2026"
+    },
     {
       "name": "Towards CARLA VR: testing Head-up Displays in CARLA driving simulator",
       "publisher": "Future of Information and Communication Conference",
