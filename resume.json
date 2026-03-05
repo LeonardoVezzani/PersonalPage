@@ -5,9 +5,9 @@
     "label": "PhD Student - XR & Automotive (Research coordination & teaching)",
     "image": "",
     "email": "leonardo.vezzani@proton.me",
-    "phone": "3920155950",
+    "phone": "+39 3920155950",
     "url": "",
-    "summary": "PhD student in Computer and Multimedia Engineering with a strong focus on XR (AR/VR), simulation, and experimental research tools. Experienced in designing, implementing, and validating simulation-based workflows for automotive and human–machine interaction studies, with particular attention to reproducibility and methodological rigor. Actively involved in coordinating research activities, mentoring students, and supporting collaborative projects across academia and industry. Comfortable working hands-on with complex technical systems while contributing to experimental design, documentation, and long-term research infrastructure.",
+    "summary": "PhD student in Computer and Multimedia Engineering with a strong focus on XR (AR/VR), simulation, and experimental research tools. Experienced in designing, implementing, and validating simulation-based workflows for automotive and human–machine interaction studies, with particular attention to reproducibility and methodological rigor. Proactive in identifying research partnerships and securing funding opportunities to advance the group's research agenda. Actively involved in coordinating research activities, mentoring students, and supporting collaborative projects across academia and industry. Comfortable working hands-on with complex technical systems while contributing to experimental design, documentation, and long-term research infrastructure. ",
   "profiles": [
       {
         "network": "LinkedIn",
@@ -20,9 +20,9 @@
         "url": "https://www.polito.it/personale?p=leonardo.vezzani"
       },
       {
-        "network": "GitHub",
+        "network": "GitHub Pages",
         "username": "Leonardo Vezzani",
-        "url": "https://github.com/LeonardoVezzani/"
+        "url": "https://leonardovezzani.github.io/PersonalPage/"
       }
     ]
   },
@@ -96,7 +96,7 @@
       "highlights": [
         "Co-lecturer in first-year programming courses",
         "Taught Python and computer architectures",
-        "Supervised master theses in Computer Graphics and Vision",
+        "Supervised master theses in Computer Graphics, Virtual Reality HCI, and Carla driving simulator customization",
         "Supported students in project organization and technical decision-making"
       ]
     },
@@ -116,14 +116,14 @@
     {
       "name": "Computer Vision Center (CVC)",
       "location": "Barcelona, Spain",
-      "position": "Visiting PhD Student",
+      "position": "Visiting Researcher (PhD Student)",
       "startDate": "2025-02",
       "endDate": "2025-08",
       "summary": "Research visit focused on combining AR HUDs and autonomous vehicle research for explainable AI and driving experience studies.",
       "highlights": [
         "Worked on explainable AI for driving experience evaluation",
         "Coordinated with international research teams",
-        "Contributed tto defining workflows of experimental design and analysis"
+        "Contributed to defining workflows of experimental design and analysis"
       ]
     }
   ],
@@ -151,7 +151,7 @@
       "name": "HoloACLS – AR Training for Medical First Responders",
       "startDate": "2022-06",
       "endDate": "2023-03",
-      "description": "Development of MRTK-based AR interfaces for a medical training simulator on HoloLens 2.",
+      "description": "Development of MRTK-based AR interfaces for a medical training simulator on HoloLens2.",
       "keywords": ["AR", "Unity", "Medical training", "HoloLens"]
     },
     {
@@ -171,7 +171,7 @@
     },
     {
       "name": "Virtual Tour – Museo Paleontologico di Asti",
-      "startDate": "2019",
+      "startDate": "2023",
       "description": "Collaboration with the Museo Paleontologico di Asti on the design and development of a virtual tour aimed at supporting digital access, education, and public engagement with the museum’s collections.",
       "keywords": [
         "Virtual tour",
@@ -184,14 +184,14 @@
   ],
 
   "publications": [
-     {
+         {
       "name": "A Review of Automotive AR-HUD Interfaces Across Driver Roles and Vehicle Automation Levels",
-      "publisher": "IEEE Transactions on Intelligent Transportation Systems (Printing)",
+      "publisher": "IEEE T-ITS (Printing)",
       "releaseDate": "2026"
     },
     {
       "name": "Towards CARLA VR: testing Head-up Displays in CARLA driving simulator",
-      "publisher": "Future of Information and Communication Conference",
+      "publisher": "SAI FICC",
       "releaseDate": "2025"
     },
     {
@@ -233,4 +233,3 @@
     "lastModified": "2025-12-11"
   }
 }
-
