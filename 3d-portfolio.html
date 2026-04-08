@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Portfolio — Leonardo Vezzani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
+<script data-cfasync="false">
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        github: {
+          canvas: { default: '#ffffff', subtle: '#f6f8fa', dark: '#22272e', 'dark-subtle': '#2d333b' },
+          border: { default: '#d0d7de', dark: '#444c56' },
+          fg: { default: '#24292f', muted: '#57606a', dark: '#e6edf3', 'dark-muted': '#9198a1' },
+          accent: { emphasis: '#0969da', dark: '#539bf5' }
+        }
+      }
+    }
+  }
+}
+</script>
+<script data-cfasync="false">
+(function() {
+  const t = localStorage.getItem('theme') || 'system';
+  if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+    document.documentElement.classList.add('dark');
+})();
+</script>
+<style>
+  html { background-color: #ffffff; color: #24292f; }
+  html.dark { background-color: rgb(33,40,48); color: #e6edf3; }
+  body { min-height: 100vh; background-color: inherit; }
+  .dark h1,.dark h2,.dark h3,.dark h4 { color: #e6edf3 !important; }
+  .glass-tile {
+    background: rgba(246,248,250,0.7) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(208,215,222,0.5) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06), inset 0 1px 0 0 rgba(255,255,255,.4);
+  }
+  .dark .glass-tile {
+    background: rgba(45,51,59,0.7) !important;
+    border: 1px solid rgba(68,76,86,0.5) !important;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.3), 0 2px 4px -1px rgba(0,0,0,.2), inset 0 1px 0 0 rgba(255,255,255,.1);
+    color: #e6edf3;
+  }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .img-grid img { width:100%; height:220px; object-fit:cover; border-radius:6px; display:block; transition:transform .3s ease; }
+  .img-grid img:hover { transform:scale(1.03); }
+</style>
+</head>
+<body class="text-github-fg-default dark:text-github-fg-dark">
+
+<!-- Theme Toggle -->
+<div class="no-print fixed z-50" style="top:max(1rem,env(safe-area-inset-top));right:max(1rem,calc(50vw - 32rem - 4rem));">
+  <button id="theme-toggle" class="p-2 rounded-lg bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors" title="Theme">
+    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"/></svg>
+    <svg id="theme-toggle-system-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>
+  </button>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
+
+  <!-- Header -->
+  <header class="mb-8 md:mb-12">
+    <a href="index.html" class="inline-flex items-center gap-1 text-sm text-github-accent-emphasis dark:text-github-accent-dark hover:underline mb-4 block">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+      Back to CV
+    </a>
+    <h1 class="text-4xl font-bold mb-2">3D Portfolio</h1>
+    <p class="text-xl text-github-fg-muted dark:text-github-fg-dark-muted">3D Modeling, Rendering &amp; Animation — Academic Projects (MSc, 2019–2022)</p>
+    <p class="text-base text-github-fg-muted dark:text-github-fg-dark-muted leading-relaxed mt-4 max-w-3xl">
+      Work produced during the MSc in Cinema and Multimedia Engineering at Politecnico di Torino.
+      Tools: Blender, Substance Painter, Mixamo. Included as evidence of foundational 3D skills underlying current XR and simulation research.
+    </p>
+  </header>
+
+  <!-- Renders -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Renders</h2>
+    <div class="img-grid grid grid-cols-2 md:grid-cols-4 gap-3">
+      <img src="Assets/portfolio/3d/moka-2.png" alt="Moka render" loading="lazy">
+      <img src="Assets/portfolio/3d/torta.png" alt="Torta render" loading="lazy">
+      <img src="Assets/portfolio/3d/roombedcmj.png" alt="Room/bed scene" loading="lazy">
+      <img src="Assets/portfolio/3d/psj_bokeh-no-color-1.png" alt="Bokeh depth-of-field study" loading="lazy">
+    </div>
+  </section>
+
+  <!-- Hard Surface -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Hard Surface Modeling</h2>
+    <div class="img-grid grid grid-cols-2 md:grid-cols-4 gap-3">
+      <img src="Assets/portfolio/3d/crawling-turret.png" alt="Crawling turret" loading="lazy">
+      <img src="Assets/portfolio/3d/grandaes-3-4-2.png" alt="Grandaes" loading="lazy">
+      <img src="Assets/portfolio/3d/jagdwalker.png" alt="Jagdwalker" loading="lazy">
+      <img src="Assets/portfolio/3d/bm38-custom-side.png" alt="BM38 custom" loading="lazy">
+    </div>
+  </section>
+
+  <!-- Procedural Materials -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Procedural Materials</h2>
+    <div class="img-grid grid grid-cols-2 md:grid-cols-3 gap-3">
+      <img src="Assets/portfolio/3d/broken-glass.png" alt="Broken glass" loading="lazy">
+      <img src="Assets/portfolio/3d/molle-1.png" alt="Spring / coil material" loading="lazy">
+      <img src="Assets/portfolio/3d/monsterskin.png" alt="Monster skin" loading="lazy">
+      <img src="Assets/portfolio/3d/reptileskin-2.png" alt="Reptile skin" loading="lazy">
+      <img src="Assets/portfolio/3d/lion-head-marble.png" alt="Lion head marble" loading="lazy">
+    </div>
+  </section>
+
+  <!-- VR Avatar Topology -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">VR Avatar Topology</h2>
+    <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-4 max-w-2xl">
+      Topology study for a VR-ready avatar — clean edge-flow optimized for deformation and real-time rendering budgets.
+    </p>
+    <div class="img-grid grid grid-cols-1 md:grid-cols-2 gap-3">
+      <img src="Assets/portfolio/3d/avatar-topoflow-169.png" alt="VR avatar topology flow" loading="lazy" style="height:320px;">
+    </div>
+  </section>
+
+  <!-- Computer Animation Class Project -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Computer Animation — Class Project</h2>
+    <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle p-4 md:p-6">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+        <div>
+          <h3 class="text-xl font-semibold">3D Printed Commercial (fictitious product)</h3>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted">Computer Animation course, Politecnico di Torino</p>
+        </div>
+        <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">2020</div>
+      </div>
+      <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-4">
+        Short animated commercial for a fictitious 3D-printed product. Role: character modeling, character animation, photography direction.
+      </p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-1 text-sm">
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Hard surface &amp; Char. Anim.</span><br><span class="font-mono text-xs">Marco Ruffa</span></div>
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Char. Anim. &amp; Physics</span><br><span class="font-mono text-xs">Beatrice Gemmi</span></div>
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Char. Modeling, Anim. &amp; Photo</span><br><span class="font-mono text-xs">Leonardo Vezzani</span></div>
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Music</span><br><span class="font-mono text-xs">Michele Fantoni</span></div>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Blender</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Character animation</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Physics simulation</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">PoliTo coursework</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const btn = document.getElementById('theme-toggle');
+const darkIcon = document.getElementById('theme-toggle-dark-icon');
+const lightIcon = document.getElementById('theme-toggle-light-icon');
+const sysIcon = document.getElementById('theme-toggle-system-icon');
+function updateIcon(t) {
+  darkIcon.classList.add('hidden'); lightIcon.classList.add('hidden'); sysIcon.classList.add('hidden');
+  if (t==='dark') darkIcon.classList.remove('hidden');
+  else if (t==='light') lightIcon.classList.remove('hidden');
+  else sysIcon.classList.remove('hidden');
+}
+function applyTheme(t) {
+  if (t==='system') document.documentElement.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches);
+  else document.documentElement.classList.toggle('dark', t==='dark');
+  updateIcon(t);
+}
+const saved = localStorage.getItem('theme') || 'system';
+applyTheme(saved);
+btn.addEventListener('click', () => {
+  const cur = localStorage.getItem('theme') || 'system';
+  const next = cur==='light' ? 'dark' : cur==='dark' ? 'system' : 'light';
+  localStorage.setItem('theme', next); applyTheme(next);
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if ((localStorage.getItem('theme')||'system')==='system') applyTheme('system');
+});
+</script>
+</body>
+</html>

@@ -1,210 +1,168 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Visual Work — Leonardo Vezzani</title>
-  <link rel="stylesheet" href="assets/css/portfolio.css" />
-  <style>
-    /* ── project-card: self-contained, no external dependency ── */
-    .project-card {
-      background: var(--surface, #f8f8f8);
-      border: 1px solid var(--border, #ddd);
-      border-radius: 8px;
-      padding: 1.5rem 2rem;
-      max-width: 680px;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual Work — Leonardo Vezzani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
+<script data-cfasync="false">
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        github: {
+          canvas: { default: '#ffffff', subtle: '#f6f8fa', dark: '#22272e', 'dark-subtle': '#2d333b' },
+          border: { default: '#d0d7de', dark: '#444c56' },
+          fg: { default: '#24292f', muted: '#57606a', dark: '#e6edf3', 'dark-muted': '#9198a1' },
+          accent: { emphasis: '#0969da', dark: '#539bf5' }
+        }
+      }
     }
-    .project-card h3 { margin: 0 0 .4rem; font-size: 1.15rem; }
-    .project-card .meta {
-      font-size: .85rem;
-      color: var(--muted, #666);
-      margin-bottom: 1rem;
-    }
-    .project-card .crew-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: .25rem .75rem;
-      font-size: .9rem;
-    }
-    .project-card .crew-list li strong { color: var(--accent, #333); }
-
-    .section-intro {
-      max-width: 680px;
-      font-size: .95rem;
-      color: var(--muted, #555);
-      margin: 0 0 1.5rem;
-      line-height: 1.6;
-    }
-
-    /* ── photo-grid fallback if carousel JS not loaded ── */
-    .photo-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: .75rem;
-    }
-    .photo-grid figure {
-      margin: 0;
-      overflow: hidden;
-      border-radius: 4px;
-      background: #eee;
-    }
-    .photo-grid img {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      display: block;
-      transition: transform .3s ease;
-    }
-    .photo-grid img:hover { transform: scale(1.04); }
-    .photo-grid figcaption {
-      padding: .35rem .5rem;
-      font-size: .78rem;
-      color: var(--muted, #666);
-    }
-  </style>
+  }
+}
+</script>
+<script data-cfasync="false">
+(function() {
+  const t = localStorage.getItem('theme') || 'system';
+  if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+    document.documentElement.classList.add('dark');
+})();
+</script>
+<style>
+  html { background-color: #ffffff; color: #24292f; }
+  html.dark { background-color: rgb(33,40,48); color: #e6edf3; }
+  body { min-height: 100vh; background-color: inherit; }
+  .dark h1,.dark h2,.dark h3,.dark h4 { color: #e6edf3 !important; }
+  .glass-tile {
+    background: rgba(246,248,250,0.7) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(208,215,222,0.5) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06), inset 0 1px 0 0 rgba(255,255,255,.4);
+  }
+  .dark .glass-tile {
+    background: rgba(45,51,59,0.7) !important;
+    border: 1px solid rgba(68,76,86,0.5) !important;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.3), 0 2px 4px -1px rgba(0,0,0,.2), inset 0 1px 0 0 rgba(255,255,255,.1);
+    color: #e6edf3;
+  }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .img-grid img { width:100%; height:220px; object-fit:cover; border-radius:6px; display:block; transition:transform .3s ease; }
+  .img-grid img:hover { transform:scale(1.03); }
+</style>
 </head>
-<body>
+<body class="text-github-fg-default dark:text-github-fg-dark">
 
-<header class="site-header">
-  <div class="container">
-    <a class="brand" href="index.html">← Back to CV</a>
-    <h1>Visual Work</h1>
-    <p class="lead">
-      Academic projects and past work in photography and videography —
-      carried out during the MSc in Cinema and Multimedia Engineering at Politecnico di Torino (2019–2022).
+<!-- Theme Toggle -->
+<div class="no-print fixed z-50" style="top:max(1rem,env(safe-area-inset-top));right:max(1rem,calc(50vw - 32rem - 4rem));">
+  <button id="theme-toggle" class="p-2 rounded-lg bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors" title="Theme">
+    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"/></svg>
+    <svg id="theme-toggle-system-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>
+  </button>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
+
+  <!-- Header -->
+  <header class="mb-8 md:mb-12">
+    <a href="index.html" class="inline-flex items-center gap-1 text-sm text-github-accent-emphasis dark:text-github-accent-dark hover:underline mb-4 block">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+      Back to CV
+    </a>
+    <h1 class="text-4xl font-bold mb-2">Visual Work</h1>
+    <p class="text-xl text-github-fg-muted dark:text-github-fg-dark-muted">Photography &amp; Videography — Academic Projects (MSc, 2019–2022)</p>
+    <p class="text-base text-github-fg-muted dark:text-github-fg-dark-muted leading-relaxed mt-4 max-w-3xl">
+      Work produced during the MSc in Cinema and Multimedia Engineering at Politecnico di Torino.
+      Included here as academic evidence of applied visual skills — composition, cinematography, color grading — not as a current creative practice.
     </p>
-  </div>
-</header>
+  </header>
 
-<main class="container">
-
-  <!-- ══════════════════════════════════════════
-       SECTION 1 — VIDEOGRAPHY
-  ══════════════════════════════════════════ -->
-  <section class="portfolio-section" id="videography">
-    <h2 class="section-title">Videography</h2>
-
-    <p class="section-intro">
-      Short film produced for the <em>Digital Photography</em> course at Politecnico di Torino (A.Y. 2020/21).
-      Role covered: Director of Photography and Color Grading.
-      The project involved end-to-end production with a multidisciplinary student crew.
-    </p>
-
-    <div class="project-card">
-      <h3>Le parti in gioco</h3>
-      <p class="meta">Short film · 2020 · Digital Photography course, Politecnico di Torino</p>
-      <ul class="crew-list">
-        <li><strong>Director</strong> Mara Lupano</li>
-        <li><strong>Producer</strong> Rosario Isabel Rauber Mendoza</li>
-        <li><strong>Photography &amp; Color</strong> Leonardo Vezzani</li>
-        <li><strong>Editing</strong> Jacopo Fiorenza</li>
-        <li><strong>Asst. Director</strong> Beatrice Gemmi</li>
-        <li><strong>Audio</strong> Gaia Brugo</li>
-        <li><strong>Scenography</strong> Roberta Filippelli</li>
-        <li><strong>Makeup</strong> Elisa Ghigone</li>
-      </ul>
-    </div>
-  </section>
-
-
-  <!-- ══════════════════════════════════════════
-       SECTION 2 — PHOTOGRAPHY
-  ══════════════════════════════════════════ -->
-  <section class="portfolio-section" id="photography">
-    <h2 class="section-title">Photography</h2>
-
-    <p class="section-intro">
-      Selected stills from academic coursework and personal practice during the degree period.
-      Subjects span portrait, environmental, and experimental light studies.
-      Relevant applied skills: composition, natural/artificial lighting, post-processing.
-    </p>
-
-    <!--
-      CAROUSEL (reuses assets/js/portfolio.js if present).
-      The photo-grid below is a CSS-only fallback — remove whichever you don't need.
-
-      NOTE: images currently link to the WordPress CDN.
-      For long-term reliability, download them to Assets/portfolio/photography/
-      and update the src paths accordingly.
-    -->
-
-    <!-- Carousel variant (requires assets/js/portfolio.js) -->
-    <div class="carousel" data-carousel>
-      <div class="carousel-track">
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/aurora-peaky-blinders.png"
-               alt="Portrait study — Aurora" loading="lazy" />
-          <figcaption>Portrait study</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/mg_3898-modifica.jpg"
-               alt="Outdoor portrait" loading="lazy" />
-          <figcaption>Outdoor portrait</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc2640-2-1.jpg"
-               alt="Environmental study" loading="lazy" />
-          <figcaption>Environmental study</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/tramonto-nel-tempio-che-brucia.jpg"
-               alt="Tramonto nel tempio che brucia — light study" loading="lazy" />
-          <figcaption>Light study — sunset</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc3990.jpg"
-               alt="Landscape" loading="lazy" />
-          <figcaption>Landscape</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc0351.jpg"
-               alt="Still life" loading="lazy" />
-          <figcaption>Still life</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/whispering-secrets-in-the-dark.jpg"
-               alt="Whispering secrets in the dark — low-key portrait" loading="lazy" />
-          <figcaption>Low-key portrait</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc3872.jpg"
-               alt="Documentary-style shot" loading="lazy" />
-          <figcaption>Documentary-style</figcaption>
-        </figure>
-
-        <figure class="carousel-slide">
-          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/mattia-peaky-blinders.jpg"
-               alt="Portrait study — Mattia" loading="lazy" />
-          <figcaption>Portrait study</figcaption>
-        </figure>
-
+  <!-- Videography -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Videography</h2>
+    <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle p-4 md:p-6">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+        <div>
+          <h3 class="text-xl font-semibold">Le parti in gioco</h3>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted">Short film · Digital Photography course, Politecnico di Torino</p>
+        </div>
+        <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">2020</div>
       </div>
-      <button class="carousel-btn prev" aria-label="Previous slide">‹</button>
-      <button class="carousel-btn next" aria-label="Next slide">›</button>
-      <div class="carousel-indicators" role="tablist" aria-label="Slide indicators"></div>
+      <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-4">
+        End-to-end student production. Role: Director of Photography and Color Grading.
+      </p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-1 text-sm">
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Director</span><br><span class="font-mono text-xs">Mara Lupano</span></div>
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Producer</span><br><span class="font-mono text-xs">R. I. Rauber Mendoza</span></div>
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Photography &amp; Color</span><br><span class="font-mono text-xs">Leonardo Vezzani</span></div>
+        <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Editing</span><br><span class="font-mono text-xs">Jacopo Fiorenza</span></div>
+        <div class="mt-2"><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Asst. Director</span><br><span class="font-mono text-xs">Beatrice Gemmi</span></div>
+        <div class="mt-2"><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Audio</span><br><span class="font-mono text-xs">Gaia Brugo</span></div>
+        <div class="mt-2"><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Scenography</span><br><span class="font-mono text-xs">Roberta Filippelli</span></div>
+        <div class="mt-2"><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Makeup</span><br><span class="font-mono text-xs">Elisa Ghigone</span></div>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Cinematography</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Color grading</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Short film</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">PoliTo coursework</span>
+      </div>
     </div>
-
   </section>
 
-</main>
+  <!-- Photography -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Photography</h2>
+    <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-5 max-w-2xl">
+      Selected stills from coursework and personal practice during the degree period. Subjects: portrait, environmental, low-key light studies.
+    </p>
+    <div class="img-grid grid grid-cols-2 md:grid-cols-3 gap-3">
+      <img src="Assets/portfolio/photography/aurora-peaky-blinders.png" alt="Portrait study" loading="lazy">
+      <img src="Assets/portfolio/photography/mg_3898-modifica.jpg" alt="Outdoor portrait" loading="lazy">
+      <img src="Assets/portfolio/photography/dsc2640-2-1.jpg" alt="Environmental study" loading="lazy">
+      <img src="Assets/portfolio/photography/tramonto-nel-tempio-che-brucia.jpg" alt="Light study — sunset" loading="lazy">
+      <img src="Assets/portfolio/photography/dsc3990.jpg" alt="Landscape" loading="lazy">
+      <img src="Assets/portfolio/photography/dsc0351.jpg" alt="Still life" loading="lazy">
+      <img src="Assets/portfolio/photography/whispering-secrets-in-the-dark.jpg" alt="Low-key portrait" loading="lazy">
+      <img src="Assets/portfolio/photography/dsc3872.jpg" alt="Documentary-style" loading="lazy">
+      <img src="Assets/portfolio/photography/mattia-peaky-blinders.jpg" alt="Portrait study" loading="lazy">
+    </div>
+  </section>
 
-<footer class="site-footer">
-  <div class="container">
-    <small>© Leonardo Vezzani</small>
-  </div>
-</footer>
+</div>
 
-<script src="assets/js/portfolio.js"></script>
+<script>
+const btn = document.getElementById('theme-toggle');
+const darkIcon = document.getElementById('theme-toggle-dark-icon');
+const lightIcon = document.getElementById('theme-toggle-light-icon');
+const sysIcon = document.getElementById('theme-toggle-system-icon');
+function updateIcon(t) {
+  darkIcon.classList.add('hidden'); lightIcon.classList.add('hidden'); sysIcon.classList.add('hidden');
+  if (t==='dark') darkIcon.classList.remove('hidden');
+  else if (t==='light') lightIcon.classList.remove('hidden');
+  else sysIcon.classList.remove('hidden');
+}
+function applyTheme(t) {
+  if (t==='system') document.documentElement.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches);
+  else document.documentElement.classList.toggle('dark', t==='dark');
+  updateIcon(t);
+}
+const saved = localStorage.getItem('theme') || 'system';
+applyTheme(saved);
+btn.addEventListener('click', () => {
+  const cur = localStorage.getItem('theme') || 'system';
+  const next = cur==='light' ? 'dark' : cur==='dark' ? 'system' : 'light';
+  localStorage.setItem('theme', next); applyTheme(next);
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if ((localStorage.getItem('theme')||'system')==='system') applyTheme('system');
+});
+</script>
 </body>
 </html>

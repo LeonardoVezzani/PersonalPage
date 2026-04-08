@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Portfolio — Leonardo Vezzani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com" data-cfasync="false"></script>
+<script data-cfasync="false">
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        github: {
+          canvas: { default: '#ffffff', subtle: '#f6f8fa', dark: '#22272e', 'dark-subtle': '#2d333b' },
+          border: { default: '#d0d7de', dark: '#444c56' },
+          fg: { default: '#24292f', muted: '#57606a', dark: '#e6edf3', 'dark-muted': '#9198a1' },
+          accent: { emphasis: '#0969da', dark: '#539bf5' }
+        }
+      }
+    }
+  }
+}
+</script>
+<script data-cfasync="false">
+(function() {
+  const t = localStorage.getItem('theme') || 'system';
+  if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches))
+    document.documentElement.classList.add('dark');
+})();
+</script>
+<style>
+  html { background-color: #ffffff; color: #24292f; }
+  html.dark { background-color: rgb(33,40,48); color: #e6edf3; }
+  body { min-height: 100vh; background-color: inherit; }
+  .dark h1,.dark h2,.dark h3,.dark h4 { color: #e6edf3 !important; }
+  .glass-tile {
+    background: rgba(246,248,250,0.7) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(208,215,222,0.5) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06), inset 0 1px 0 0 rgba(255,255,255,.4);
+  }
+  .dark .glass-tile {
+    background: rgba(45,51,59,0.7) !important;
+    border: 1px solid rgba(68,76,86,0.5) !important;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,.3), 0 2px 4px -1px rgba(0,0,0,.2), inset 0 1px 0 0 rgba(255,255,255,.1);
+    color: #e6edf3;
+  }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .img-grid img { width:100%; height:260px; object-fit:cover; border-radius:6px; display:block; transition:transform .3s ease; }
+  .img-grid img:hover { transform:scale(1.03); }
+</style>
+</head>
+<body class="text-github-fg-default dark:text-github-fg-dark">
+
+<!-- Theme Toggle -->
+<div class="no-print fixed z-50" style="top:max(1rem,env(safe-area-inset-top));right:max(1rem,calc(50vw - 32rem - 4rem));">
+  <button id="theme-toggle" class="p-2 rounded-lg bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors" title="Theme">
+    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"/></svg>
+    <svg id="theme-toggle-system-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>
+  </button>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 py-8 md:py-12">
+
+  <!-- Header -->
+  <header class="mb-8 md:mb-12">
+    <a href="index.html" class="inline-flex items-center gap-1 text-sm text-github-accent-emphasis dark:text-github-accent-dark hover:underline mb-4 block">
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+      Back to CV
+    </a>
+    <h1 class="text-4xl font-bold mb-2">Game Portfolio</h1>
+    <p class="text-xl text-github-fg-muted dark:text-github-fg-dark-muted">Game &amp; XR Projects — Academic Work (MSc, 2019–2022)</p>
+    <p class="text-base text-github-fg-muted dark:text-github-fg-dark-muted leading-relaxed mt-4 max-w-3xl">
+      Projects produced during the MSc in Cinema and Multimedia Engineering at Politecnico di Torino.
+      These represent the academic foundation for current XR and simulation research — Unity, VR interaction design, and immersive experience prototyping.
+    </p>
+  </header>
+
+  <!-- Sam Spacediver -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Sam Spacediver</h2>
+    <div class="img-grid grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <img src="Assets/portfolio/game/sam-dark-2.png" alt="Sam Spacediver — dark scene" loading="lazy">
+      <img src="Assets/portfolio/game/sam-spacediver-by-vezzani-3.png" alt="Sam Spacediver — character" loading="lazy">
+      <img src="Assets/portfolio/game/sam-fly-2.png" alt="Sam Spacediver — flight" loading="lazy">
+      <img src="Assets/portfolio/game/sam-light-2.png" alt="Sam Spacediver — light scene" loading="lazy">
+    </div>
+    <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle p-4 md:p-6">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+        <div>
+          <h3 class="text-xl font-semibold">Sam Spacediver</h3>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted">Puzzle game · Virtual Reality course, Politecnico di Torino</p>
+        </div>
+        <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">2020</div>
+      </div>
+      <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-4">
+        VR puzzle game developed for the Virtual Reality course. Full pipeline from 3D modeling to in-engine integration.
+        Published on itch.io.
+      </p>
+      <p class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mb-4 font-mono">
+        © 2020 Fabio Pellone, Leonardo Vezzani, Massimo Gismondi, Mara Lupano, Simona Potenza
+      </p>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Unity</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Blender</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Substance Painter</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Mixamo</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">VR</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">PoliTo coursework</span>
+      </div>
+      <a href="https://vezzani.itch.io/samspacediver" target="_blank" rel="noopener noreferrer"
+         class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-md hover:border-github-accent-emphasis dark:hover:border-github-accent-dark transition-colors">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M2.315 1.56C1.565 2.01.03 4.03 0 6v.66c0 1.51.8 2.84 2 3.47v9.41c0 .98 1.15 2.46 4.52 2.46 2.18 0 3.76-.6 4.48-1.76C11.62 20.9 12 21 12 21s.38-.1 1-.39c.72 1.16 2.3 1.76 4.48 1.76 3.37 0 4.52-1.48 4.52-2.46V10.13c1.2-.63 2-1.96 2-3.47V6c-.03-1.97-1.57-3.99-2.315-4.44C20.44.67 15.5 0 12 0 8.5 0 3.065.67 2.315 1.56zm17.37 14.54c0 .6-.68 1.33-2.185 1.33-1.17 0-2.08-.44-2.08-.44V15h-6.84v1.99s-.91.44-2.08.44c-1.505 0-2.185-.73-2.185-1.33V9.02c.87.28 1.83.43 2.84.43h9.69c1.01 0 1.97-.15 2.84-.43v7.08z"/></svg>
+        Play on itch.io
+      </a>
+    </div>
+  </section>
+
+  <!-- S3lf -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">S3lf</h2>
+    <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle p-4 md:p-6">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-3">
+        <div>
+          <h3 class="text-xl font-semibold">S3lf</h3>
+          <p class="text-github-fg-muted dark:text-github-fg-dark-muted">
+            Immersive VR experience · (X)R Immersive Interactive Stories, Politecnico di Torino
+            <span class="inline-block ml-2 text-xs px-2 py-0.5 border border-github-border-default dark:border-github-border-dark rounded">NFB Canada collaboration</span>
+          </p>
+        </div>
+        <div class="text-sm text-github-fg-muted dark:text-github-fg-dark-muted mt-1 md:mt-0 md:text-right">2021</div>
+      </div>
+      <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-4">
+        Immersive VR experience exploring the relationship between social media and personal identity.
+        Developed in the (X)R Immersive Interactive Stories project in collaboration with Eloi Champagne,
+        Technical Director of the National Film Board of Canada.
+      </p>
+      <p class="text-github-fg-muted dark:text-github-fg-dark-muted mb-4">
+        This project directly precedes and contextualises later research on XR storytelling and
+        human-centered immersive interfaces.
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">VR</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">XR storytelling</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Interactive experience</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">National Film Board of Canada</span>
+        <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">PoliTo coursework</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const btn = document.getElementById('theme-toggle');
+const darkIcon = document.getElementById('theme-toggle-dark-icon');
+const lightIcon = document.getElementById('theme-toggle-light-icon');
+const sysIcon = document.getElementById('theme-toggle-system-icon');
+function updateIcon(t) {
+  darkIcon.classList.add('hidden'); lightIcon.classList.add('hidden'); sysIcon.classList.add('hidden');
+  if (t==='dark') darkIcon.classList.remove('hidden');
+  else if (t==='light') lightIcon.classList.remove('hidden');
+  else sysIcon.classList.remove('hidden');
+}
+function applyTheme(t) {
+  if (t==='system') document.documentElement.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches);
+  else document.documentElement.classList.toggle('dark', t==='dark');
+  updateIcon(t);
+}
+const saved = localStorage.getItem('theme') || 'system';
+applyTheme(saved);
+btn.addEventListener('click', () => {
+  const cur = localStorage.getItem('theme') || 'system';
+  const next = cur==='light' ? 'dark' : cur==='dark' ? 'system' : 'light';
+  localStorage.setItem('theme', next); applyTheme(next);
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if ((localStorage.getItem('theme')||'system')==='system') applyTheme('system');
+});
+</script>
+</body>
+</html>
