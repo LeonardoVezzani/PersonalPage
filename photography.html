@@ -147,6 +147,27 @@ tailwind.config = {
 </div>
 
 <script>
+<!-- Lightbox -->
+<div id="lightbox" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.9);cursor:zoom-out;align-items:center;justify-content:center;">
+  <img id="lightbox-img" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.6);">
+  <button id="lightbox-close" style="position:absolute;top:1rem;right:1.25rem;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1;" aria-label="Close">&times;</button>
+</div>
+
+<script>
+const lb = document.getElementById('lightbox');
+const lbImg = document.getElementById('lightbox-img');
+document.querySelectorAll('.img-grid img').forEach(img => {
+  img.style.cursor = 'zoom-in';
+  img.addEventListener('click', () => {
+    lbImg.src = img.src; lbImg.alt = img.alt;
+    lb.style.display = 'flex'; document.body.style.overflow = 'hidden';
+  });
+});
+function closeLb() { lb.style.display = 'none'; document.body.style.overflow = ''; }
+lb.addEventListener('click', e => { if (e.target !== lbImg) closeLb(); });
+document.getElementById('lightbox-close').addEventListener('click', closeLb);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+
 const btn = document.getElementById('theme-toggle');
 const darkIcon = document.getElementById('theme-toggle-dark-icon');
 const lightIcon = document.getElementById('theme-toggle-light-icon');

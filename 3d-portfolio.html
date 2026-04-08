@@ -100,7 +100,7 @@ tailwind.config = {
     <div class="img-grid grid grid-cols-2 md:grid-cols-4 gap-3">
       <img src="Assets/portfolio/3d/crawling-turret.png" alt="Crawling turret" loading="lazy">
       <img src="Assets/portfolio/3d/grandaes-3-4-2.png" alt="Grandaes" loading="lazy">
-      <img src="Assets/portfolio/3d/jagdwalker.png" alt="Jagdwalker" loading="lazy">
+      <img src="Assets/portfolio/3d/lion-head-marble.png" alt="Lion head marble" loading="lazy">
       <img src="Assets/portfolio/3d/bm38-custom-side.png" alt="BM38 custom" loading="lazy">
     </div>
   </section>
@@ -108,12 +108,11 @@ tailwind.config = {
   <!-- Procedural Materials -->
   <section class="mb-10">
     <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Procedural Materials</h2>
-    <div class="img-grid grid grid-cols-2 md:grid-cols-3 gap-3">
+    <div class="img-grid grid grid-cols-2 md:grid-cols-4 gap-3">
       <img src="Assets/portfolio/3d/broken-glass.png" alt="Broken glass" loading="lazy">
       <img src="Assets/portfolio/3d/molle-1.png" alt="Spring / coil material" loading="lazy">
       <img src="Assets/portfolio/3d/monsterskin.png" alt="Monster skin" loading="lazy">
       <img src="Assets/portfolio/3d/reptileskin-2.png" alt="Reptile skin" loading="lazy">
-      <img src="Assets/portfolio/3d/lion-head-marble.png" alt="Lion head marble" loading="lazy">
     </div>
   </section>
 
@@ -148,18 +147,50 @@ tailwind.config = {
         <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Char. Modeling, Anim. &amp; Photo</span><br><span class="font-mono text-xs">Leonardo Vezzani</span></div>
         <div><span class="text-github-fg-muted dark:text-github-fg-dark-muted">Music</span><br><span class="font-mono text-xs">Michele Fantoni</span></div>
       </div>
-      <div class="flex flex-wrap gap-2 mt-4">
+      <div class="flex flex-wrap gap-2 mt-4 mb-5">
         <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Blender</span>
         <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Character animation</span>
         <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">Physics simulation</span>
         <span class="px-2 py-1 text-xs bg-github-canvas-default dark:bg-github-canvas-dark border border-github-border-default dark:border-github-border-dark rounded">PoliTo coursework</span>
+      </div>
+      <div class="relative w-full" style="padding-bottom:56.25%">
+        <iframe class="absolute inset-0 w-full h-full rounded-md"
+          src="https://www.youtube.com/embed/yu9Kl1nWfPE"
+          title="3D Printed Commercial (2020)"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen loading="lazy">
+        </iframe>
       </div>
     </div>
   </section>
 
 </div>
 
+<!-- Lightbox -->
+<div id="lightbox" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.9);cursor:zoom-out;align-items:center;justify-content:center;">
+  <img id="lightbox-img" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.6);">
+  <button id="lightbox-close" style="position:absolute;top:1rem;right:1.25rem;background:none;border:none;color:#fff;font-size:2rem;cursor:pointer;line-height:1;" aria-label="Close">×</button>
+</div>
+
 <script>
+// Lightbox
+const lb = document.getElementById('lightbox');
+const lbImg = document.getElementById('lightbox-img');
+document.querySelectorAll('.img-grid img').forEach(img => {
+  img.style.cursor = 'zoom-in';
+  img.addEventListener('click', () => {
+    lbImg.src = img.src;
+    lbImg.alt = img.alt;
+    lb.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  });
+});
+function closeLb() { lb.style.display = 'none'; document.body.style.overflow = ''; }
+lb.addEventListener('click', e => { if (e.target !== lbImg) closeLb(); });
+document.getElementById('lightbox-close').addEventListener('click', closeLb);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLb(); });
+
 const btn = document.getElementById('theme-toggle');
 const darkIcon = document.getElementById('theme-toggle-dark-icon');
 const lightIcon = document.getElementById('theme-toggle-light-icon');
