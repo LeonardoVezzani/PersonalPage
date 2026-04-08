@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Visual Work — Leonardo Vezzani</title>
+  <link rel="stylesheet" href="assets/css/portfolio.css" />
+  <style>
+    /* ── project-card: self-contained, no external dependency ── */
+    .project-card {
+      background: var(--surface, #f8f8f8);
+      border: 1px solid var(--border, #ddd);
+      border-radius: 8px;
+      padding: 1.5rem 2rem;
+      max-width: 680px;
+    }
+    .project-card h3 { margin: 0 0 .4rem; font-size: 1.15rem; }
+    .project-card .meta {
+      font-size: .85rem;
+      color: var(--muted, #666);
+      margin-bottom: 1rem;
+    }
+    .project-card .crew-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .25rem .75rem;
+      font-size: .9rem;
+    }
+    .project-card .crew-list li strong { color: var(--accent, #333); }
+
+    .section-intro {
+      max-width: 680px;
+      font-size: .95rem;
+      color: var(--muted, #555);
+      margin: 0 0 1.5rem;
+      line-height: 1.6;
+    }
+
+    /* ── photo-grid fallback if carousel JS not loaded ── */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: .75rem;
+    }
+    .photo-grid figure {
+      margin: 0;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #eee;
+    }
+    .photo-grid img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+      transition: transform .3s ease;
+    }
+    .photo-grid img:hover { transform: scale(1.04); }
+    .photo-grid figcaption {
+      padding: .35rem .5rem;
+      font-size: .78rem;
+      color: var(--muted, #666);
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="index.html">← Back to CV</a>
+    <h1>Visual Work</h1>
+    <p class="lead">
+      Academic projects and past work in photography and videography —
+      carried out during the MSc in Cinema and Multimedia Engineering at Politecnico di Torino (2019–2022).
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ══════════════════════════════════════════
+       SECTION 1 — VIDEOGRAPHY
+  ══════════════════════════════════════════ -->
+  <section class="portfolio-section" id="videography">
+    <h2 class="section-title">Videography</h2>
+
+    <p class="section-intro">
+      Short film produced for the <em>Digital Photography</em> course at Politecnico di Torino (A.Y. 2020/21).
+      Role covered: Director of Photography and Color Grading.
+      The project involved end-to-end production with a multidisciplinary student crew.
+    </p>
+
+    <div class="project-card">
+      <h3>Le parti in gioco</h3>
+      <p class="meta">Short film · 2020 · Digital Photography course, Politecnico di Torino</p>
+      <ul class="crew-list">
+        <li><strong>Director</strong> Mara Lupano</li>
+        <li><strong>Producer</strong> Rosario Isabel Rauber Mendoza</li>
+        <li><strong>Photography &amp; Color</strong> Leonardo Vezzani</li>
+        <li><strong>Editing</strong> Jacopo Fiorenza</li>
+        <li><strong>Asst. Director</strong> Beatrice Gemmi</li>
+        <li><strong>Audio</strong> Gaia Brugo</li>
+        <li><strong>Scenography</strong> Roberta Filippelli</li>
+        <li><strong>Makeup</strong> Elisa Ghigone</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════
+       SECTION 2 — PHOTOGRAPHY
+  ══════════════════════════════════════════ -->
+  <section class="portfolio-section" id="photography">
+    <h2 class="section-title">Photography</h2>
+
+    <p class="section-intro">
+      Selected stills from academic coursework and personal practice during the degree period.
+      Subjects span portrait, environmental, and experimental light studies.
+      Relevant applied skills: composition, natural/artificial lighting, post-processing.
+    </p>
+
+    <!--
+      CAROUSEL (reuses assets/js/portfolio.js if present).
+      The photo-grid below is a CSS-only fallback — remove whichever you don't need.
+
+      NOTE: images currently link to the WordPress CDN.
+      For long-term reliability, download them to Assets/portfolio/photography/
+      and update the src paths accordingly.
+    -->
+
+    <!-- Carousel variant (requires assets/js/portfolio.js) -->
+    <div class="carousel" data-carousel>
+      <div class="carousel-track">
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/aurora-peaky-blinders.png"
+               alt="Portrait study — Aurora" loading="lazy" />
+          <figcaption>Portrait study</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/mg_3898-modifica.jpg"
+               alt="Outdoor portrait" loading="lazy" />
+          <figcaption>Outdoor portrait</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc2640-2-1.jpg"
+               alt="Environmental study" loading="lazy" />
+          <figcaption>Environmental study</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/tramonto-nel-tempio-che-brucia.jpg"
+               alt="Tramonto nel tempio che brucia — light study" loading="lazy" />
+          <figcaption>Light study — sunset</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc3990.jpg"
+               alt="Landscape" loading="lazy" />
+          <figcaption>Landscape</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc0351.jpg"
+               alt="Still life" loading="lazy" />
+          <figcaption>Still life</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/whispering-secrets-in-the-dark.jpg"
+               alt="Whispering secrets in the dark — low-key portrait" loading="lazy" />
+          <figcaption>Low-key portrait</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/dsc3872.jpg"
+               alt="Documentary-style shot" loading="lazy" />
+          <figcaption>Documentary-style</figcaption>
+        </figure>
+
+        <figure class="carousel-slide">
+          <img src="https://vezzanileonardo.wordpress.com/wp-content/uploads/2021/10/mattia-peaky-blinders.jpg"
+               alt="Portrait study — Mattia" loading="lazy" />
+          <figcaption>Portrait study</figcaption>
+        </figure>
+
+      </div>
+      <button class="carousel-btn prev" aria-label="Previous slide">‹</button>
+      <button class="carousel-btn next" aria-label="Next slide">›</button>
+      <div class="carousel-indicators" role="tablist" aria-label="Slide indicators"></div>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <small>© Leonardo Vezzani</small>
+  </div>
+</footer>
+
+<script src="assets/js/portfolio.js"></script>
+</body>
+</html>
