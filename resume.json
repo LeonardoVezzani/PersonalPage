@@ -203,6 +203,12 @@
   ],
   "publications": [
     {
+      "name": "CARLA-IVR: An Open CARLA Extension for Immersive AR-HUD Evaluation and Reproducible Experimental Design",
+      "publisher": "IEEE Open Journal of Vehicular Technology",
+      "releaseDate": "2026",
+      "url": "https://ieeexplore.ieee.org/document/11731866"
+    },
+    {
       "name": "A Review of Automotive AR-HUD Interfaces Across Driver Roles and Vehicle Automation Levels",
       "publisher": "IEEE T-ITS, vol. 27, no. 5, pp. 5024-5044",
       "releaseDate": "2026",
