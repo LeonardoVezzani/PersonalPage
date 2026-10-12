@@ -8,7 +8,7 @@
     "phone": "+39 3920155950",
     "url": "",
     "summary": "PhD student in Computer and Multimedia Engineering with a strong focus on XR (AR/VR), simulation, and experimental research tools. Experienced in designing, implementing, and validating simulation-based workflows for automotive and human–machine interaction studies, with particular attention to reproducibility and methodological rigor. Proactive in identifying research partnerships and securing funding opportunities to advance the group's research agenda. Actively involved in coordinating research activities, mentoring students, and supporting collaborative projects across academia and industry. Comfortable working hands-on with complex technical systems while contributing to experimental design, documentation, and long-term research infrastructure. ",
-  "profiles": [
+    "profiles": [
       {
         "network": "LinkedIn",
         "username": "Leonardo Vezzani",
@@ -26,7 +26,6 @@
       }
     ]
   },
-
   "skills": [
     {
       "name": "XR & Simulation",
@@ -72,7 +71,6 @@
       ]
     }
   ],
-
   "work": [
     {
       "name": "Politecnico di Torino",
@@ -96,8 +94,9 @@
       "highlights": [
         "Co-lecturer in first-year programming courses",
         "Taught Python and computer architectures",
-        "Supervised master theses in Computer Graphics, Virtual Reality HCI, and Carla driving simulator customization",
-        "Supported students in project organization and technical decision-making"
+        "Supervised master theses in Computer Graphics, Virtual Reality HCI, and CARLA driving simulator customization, also in the context of Links Foundation group Future Cities & Communities",
+        "Supported students in project organization and technical decision-making",
+        "Organized and tutored student challenges including the Marazzato Challenge and Iveco Challenge"
       ]
     },
     {
@@ -127,7 +126,6 @@
       ]
     }
   ],
-
   "education": [
     {
       "institution": "Politecnico di Torino",
@@ -143,30 +141,52 @@
       "studyType": "BSc",
       "startDate": "2015",
       "endDate": "2019"
+    },
+    {
+      "institution": "IPMA Italy",
+      "studyType": "Individual Competence Baseline - ICB4",
+      "startDate": "2021"
+    },
+    {
+      "institution": "CIFIS",
+      "studyType": "24 CFU - Teacher Training",
+      "startDate": "2021"
     }
   ],
-
   "projects": [
     {
       "name": "HoloACLS – AR Training for Medical First Responders",
       "startDate": "2022-06",
       "endDate": "2023-03",
       "description": "Development of MRTK-based AR interfaces for a medical training simulator on HoloLens2.",
-      "keywords": ["AR", "Unity", "Medical training", "HoloLens"]
+      "keywords": [
+        "AR",
+        "Unity",
+        "Medical training",
+        "HoloLens"
+      ]
     },
     {
       "name": "XR Experiences Design & Prototyping",
       "startDate": "2020-10",
       "endDate": "2021-01",
       "description": "Collaboration with the National Film Board of Canada on storytelling-oriented XR experience design.",
-      "keywords": ["XR", "Storytelling", "Prototyping"]
+      "keywords": [
+        "XR",
+        "Storytelling",
+        "Prototyping"
+      ]
     },
     {
       "name": "Nexa City – Digital Platform for Internet & Society",
       "startDate": "2018-04",
       "endDate": "2018-09",
       "description": "Web design and development internship at the Nexa Center for Internet & Society, focused on the creation of 'Nexa City', a digital platform for sharing interviews, articles, and podcasts on internet governance, digital rights, and technology policy.",
-      "keywords": [  "Web development", "Digital rights", "Internet governance"],
+      "keywords": [
+        "Web development",
+        "Digital rights",
+        "Internet governance"
+      ],
       "type": "internship"
     },
     {
@@ -180,14 +200,13 @@
       ],
       "type": "cultural project"
     }
-
   ],
-
   "publications": [
-         {
+    {
       "name": "A Review of Automotive AR-HUD Interfaces Across Driver Roles and Vehicle Automation Levels",
-      "publisher": "IEEE T-ITS (Printing)",
-      "releaseDate": "2026"
+      "publisher": "IEEE T-ITS, vol. 27, no. 5, pp. 5024-5044",
+      "releaseDate": "2026",
+      "url": "https://doi.org/10.1109/TITS.2026.3657505"
     },
     {
       "name": "Towards CARLA VR: testing Head-up Displays in CARLA driving simulator",
@@ -205,14 +224,24 @@
       "releaseDate": "2023"
     }
   ],
-
   "languages": [
-    { "language": "Italian", "fluency": "Native" },
-    { "language": "English", "fluency": "Fluent" },
-    { "language": "French", "fluency": "Basic" },
-    { "language": "Spanish", "fluency": "Basic" }
+    {
+      "language": "Italian",
+      "fluency": "Native"
+    },
+    {
+      "language": "English",
+      "fluency": "Fluent"
+    },
+    {
+      "language": "French",
+      "fluency": "Basic"
+    },
+    {
+      "language": "Spanish",
+      "fluency": "Basic"
+    }
   ],
-
   "interests": [
     {
       "name": "Human-centered and ethical technology",
@@ -224,12 +253,10 @@
       ]
     }
   ],
-
   "references": [],
-  
   "meta": {
     "canonical": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/sample.resume.json",
     "version": "v1.0.0",
-    "lastModified": "2025-12-11"
+    "lastModified": "2026-10-12"
   }
 }
