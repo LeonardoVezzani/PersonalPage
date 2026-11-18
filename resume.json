@@ -7,7 +7,7 @@
     "email": "leonardo.vezzani@proton.me",
     "phone": "+39 3920155950",
     "url": "",
-    "summary": "PhD student in Computer and Multimedia Engineering with a strong focus on XR (AR/VR), simulation, and experimental research tools. Experienced in designing, implementing, and validating simulation-based workflows for automotive and human–machine interaction studies, with particular attention to reproducibility and methodological rigor. Proactive in identifying research partnerships and securing funding opportunities to advance the group's research agenda. Actively involved in coordinating research activities, mentoring students, and supporting collaborative projects across academia and industry. Comfortable working hands-on with complex technical systems while contributing to experimental design, documentation, and long-term research infrastructure. ",
+    "summary": "PhD candidate in Computer Engineering working on XR and simulation for automotive research. Alongside research and hands-on development (Unity, Unreal Engine, CARLA), I have built and managed industry–academia partnerships, supervised master theses on digital twins and digital shadows, and helped students move from the university into industry. I design and validate simulation-based tools with real users, and I am comfortable explaining them to both technical and business audiences.",
     "profiles": [
       {
         "network": "LinkedIn",
@@ -50,20 +50,33 @@
       ]
     },
     {
+      "name": "AI",
+      "keywords": [
+        "Explainable AI (XAI)",
+        "AI-assisted software development",
+        "LLM tools for research, writing and documentation",
+        "Prompt engineering"
+      ]
+    },
+    {
       "name": "Collaboration & Coordination",
       "keywords": [
         "Team leadership",
         "Project management",
+        "Public speaking",
         "Teaching",
         "Thesis supervision",
         "Interdisciplinary collaboration"
       ]
     },
     {
-      "name": "Personal & Creative Interests",
+      "name": "Personal Interests",
       "keywords": [
         "3D printing",
         "Arts and crafts",
+        "Painting",
+        "Sculpting",
+        "Game development",
         "Photography",
         "Hiking",
         "Trekking",
@@ -264,6 +277,6 @@
   "meta": {
     "canonical": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/sample.resume.json",
     "version": "v1.0.0",
-    "lastModified": "2026-10-12"
+    "lastModified": "2026-11-18"
   }
 }
