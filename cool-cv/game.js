@@ -68,22 +68,17 @@ function height(wx, wz) {
 }
 
 // ---------------------------------------------------------------- CV content
-const CV = [
-  { id: 'edu', title: 'Education & languages', pos: polar(90, 52), color: 0xcf222e,
-    html: `<ul><li><b>PhD, Computer Engineering</b> · Politecnico di Torino · 2022 – present</li><li><b>MSc, Cinema and Multimedia Engineering</b> · PoliTO · 2019 – 2022<br><span style="opacity:.75">Thesis: locomotion interface for VR based on seat pressure mapping</span></li><li><b>BSc, Cinema and Multimedia Engineering</b> · PoliTO · 2015 – 2019</li><li>CIFIS · 24 CFU teacher training · 2021</li></ul><p><b>Languages:</b> Italian (native) · English (C1) · French (A2) · Spanish (A1)</p>` },
-  { id: 'proj', title: 'Projects & skills', pos: polar(210, 52), color: 0xcf222e,
-    html: `<ul><li><b>HoloACLS</b> – AR training for medical first responders (HoloLens 2)</li><li><b>Virtual Tour, Museo Paleontologico di Asti</b></li><li><b>S3lf</b> – VR storytelling with the National Film Board of Canada</li><li><b>Nexa City</b> – platform on digital rights, Nexa Center for Internet &amp; Society</li></ul><p><b>Skills:</b> experimental design, user research, prototyping, data analysis · project coordination, partnerships, teaching · Unity, Unreal Engine, CARLA, ROS2, Python · AR/VR/XR</p>` },
-  { id: 'pub', title: 'Publications', pos: polar(330, 52), color: 0xcf222e,
-    html: `<ul><li><b>CARLA-IVR</b>: an open CARLA extension for immersive AR-HUD evaluation and reproducible experimental design – IEEE OJVT, 2026</li><li>A review of automotive AR-HUD interfaces across driver roles and automation levels – IEEE T-ITS, 2026</li><li>Towards CARLA VR: testing head-up displays in CARLA – SAI FICC, 2025</li><li>AR for warehouses: marker-based navigation and inventory – ICCSCC, 2024</li><li>The WalkingSeat: a leaning interface for VR locomotion – EuroXR, 2023</li></ul>` },
-  { id: 'exp', title: 'Experience', pos: SUMMIT, color: 0xcf222e,
-    html: `<ul><li><b>PhD researcher</b>, Politecnico di Torino (2022 – present): conceived CARLA-IVR, cutting immersive study setup from about a month to under a week; built 9 industry and research collaborations</li><li><b>Co-lecturer &amp; thesis supervisor</b> (2023 – present): 7 master theses, 11 interdisciplinary student teams in industry challenges</li><li><b>Visiting researcher</b>, Computer Vision Center, Barcelona (2025)</li><li><b>Research assistant</b>, Reply (2023 – 2025)</li></ul>` },
+const CV = [ // the four CV pages hidden in the valley; their content is the CV page itself, revealed as you find them
+  { id: 'edu', pos: polar(90, 52), color: 0xcf222e },
+  { id: 'proj', pos: polar(210, 52), color: 0xcf222e },
+  { id: 'pub', pos: polar(330, 52), color: 0xcf222e },
+  { id: 'exp', pos: SUMMIT, color: 0xcf222e }, // the last one, on the highest summit of the ring
 ];
 const CARPET_ROUTE = [];
 const DOG_POS = polar(225, 84); // on the mountains, bottom left of the map
 const DOG_WAIT_K = 1.3; // the waiting dog is 30% bigger
 const dogRing = new THREE.Mesh(new THREE.RingGeometry(0, 2.6, 40, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange disc under the waiting dog; it follows the slope (see below)
 dogRing.renderOrder = 2;
-const PDF_URL = '../CV_Vezzani_Printable.pdf';
 
 // ---------------------------------------------------------------- renderer & scene
 const canvas = document.getElementById('game');
@@ -322,7 +317,7 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
   const CELL = 2, HALFG = 122, NG = Math.ceil(2 * HALFG / CELL), CLEAR = 8;
   const blocked = new Uint8Array(NG * NG), cellXZ = i => [-HALFG + (i % NG + 0.5) * CELL, -HALFG + (Math.floor(i / NG) + 0.5) * CELL];
   for (let i = 0; i < NG * NG; i++) { const [x, z] = cellXZ(i);
-    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10) { blocked[i] = 1; continue; }
+    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.25) { blocked[i] = 1; continue; } // off the board, near the rim or over the lake
     for (const hs of SCENERY.houses) if (Math.hypot(x - hs.x, z - hs.z) < CLEAR + hs.sc * 1.5) { blocked[i] = 1; break; } }
   const idx = (x, z) => Math.max(0, Math.min(NG - 1, Math.floor((x + HALFG) / CELL))) + Math.max(0, Math.min(NG - 1, Math.floor((z + HALFG) / CELL))) * NG;
   function astar(from, to) {
@@ -357,7 +352,7 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
       for (let d = STEP - carry; d < L; d += STEP) even.push([a[0] + (c[0] - a[0]) * d / L, a[1] + (c[1] - a[1]) * d / L]);
       carry = (carry + L) % STEP; }
     even.push([...dense[dense.length - 1]]); dense = even;
-    const near = (x, z) => SCENERY.houses.some(hs => Math.hypot(x - hs.x, z - hs.z) < 5.5 + hs.sc * 1.5) || (Math.hypot(x, z) > rimAt(x, z) - 10 && Math.hypot(x - exp.pos[0], z - exp.pos[1]) > 12); // a little closer to the houses than the planner, the summit itself is outside the rim
+    const near = (x, z) => Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.2 || SCENERY.houses.some(hs => Math.hypot(x - hs.x, z - hs.z) < 5.5 + hs.sc * 1.5) || (Math.hypot(x, z) > rimAt(x, z) - 10 && Math.hypot(x - exp.pos[0], z - exp.pos[1]) > 12); // a little closer to the houses than the planner, the summit itself is outside the rim
     for (let k = 0; k < 160; k++) for (let i = 1; i < dense.length - 1; i++) {
       const a = dense[i - 1], c = dense[i + 1], q = dense[i], nx = (a[0] + q[0] + c[0]) / 3, nz = (a[1] + q[1] + c[1]) / 3;
       if (!near(nx, nz)) { q[0] = nx; q[1] = nz; } }
@@ -494,13 +489,20 @@ const walkers = [];
       for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.deleteAttribute('uv'); return g; });
     const m = new THREE.Mesh(mergeGeometries(geos), bodyMat); m.castShadow = true; return m;
   };
-  const boxMat = new THREE.LineBasicMaterial({ color: 0xff2d2d });
+  const boxMat = new THREE.MeshBasicMaterial({ color: 0xff2d2d });
   const occMat = new THREE.MeshBasicMaterial({ colorWrite: false }); // writes depth only, so the back edges of the box are hidden
-  const unitBox = new THREE.BoxGeometry(0.98, 0.98, 0.98), unitEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)); // shared by every frame
+  const frameGeos = {}, T = 0.11; // edges are thin bars (WebGL lines are always 1 px), shared by every frame of a size
+  const frameGeo = (w, h, d) => frameGeos[[w, h, d]] ||= (() => {
+    const bars = [];
+    for (const y of [-h / 2, h / 2]) for (const z of [-d / 2, d / 2]) bars.push(new THREE.BoxGeometry(w + T, T, T).translate(0, y, z));
+    for (const x of [-w / 2, w / 2]) for (const z of [-d / 2, d / 2]) bars.push(new THREE.BoxGeometry(T, h + T, T).translate(x, 0, z));
+    for (const x of [-w / 2, w / 2]) for (const y of [-h / 2, h / 2]) bars.push(new THREE.BoxGeometry(T, T, d + T).translate(x, y, 0));
+    return { occ: new THREE.BoxGeometry(w * 0.98, h * 0.98, d * 0.98), bars: mergeGeometries(bars) };
+  })();
   const frame = (w, h, d) => {
-    const g = new THREE.Group(); g.position.y = h / 2; g.scale.set(w, h, d); g.visible = false; g.userData.isBox = true;
-    const occ = new THREE.Mesh(unitBox, occMat); occ.renderOrder = 9; g.add(occ);
-    const l = new THREE.LineSegments(unitEdges, boxMat); l.renderOrder = 10; g.add(l);
+    const g = new THREE.Group(); g.position.y = h / 2; g.visible = false; g.userData.isBox = true; const fg = frameGeo(w, h, d);
+    const occ = new THREE.Mesh(fg.occ, occMat); occ.renderOrder = 9; g.add(occ);
+    const l = new THREE.Mesh(fg.bars, boxMat); l.renderOrder = 10; g.add(l);
     return g;
   };
   function sheep() {
@@ -514,21 +516,25 @@ const walkers = [];
       ...[-0.2, 0.2].map(x => [new THREE.BoxGeometry(0.24, 0.75, 0.26), 0x353335, x, 0.38, 0])]));
     g.add(frame(1.3, 2.8, 1.3)); return g;
   }
+  const flocks = CV.map(c => [c.pos[0] + 7, c.pos[1] + 6]); // a few sheep near every CV page
   const spots = [[100, 30], [120, 36], [200, 30], [260, 40], [300, 26], [40, 40], [160, 20], [340, 44], [80, 44], [235, 44], [10, 28], [280, 36]];
-  spots.forEach(([deg, r], i) => {
-    const home = polar(deg, r), isSheep = i % 3 !== 0;
+  [...spots.map(([deg, r]) => polar(deg, r)), ...flocks].forEach((home, i) => {
+    const isSheep = i >= spots.length || i % 3 !== 0;
     const count = isSheep ? 3 : 1;
     for (let k = 0; k < count; k++) {
       const g = isSheep ? sheep() : person([PAL.wall, 0x566c8d, PAL.roof, PAL.olive][i % 4]);
       const x = home[0] + (k - 1) * 3, z = home[1] + (k % 2) * 3;
       if (groundAt(x, z) < WATER_Y + 0.6) continue; // never start in the lake
       g.position.set(x, groundAt(x, z), z); scene.add(g);
-      walkers.push({ g, home, speed: isSheep ? 1.4 : 2.4, target: [x, z], wait: Math.random() * 2, knocked: 0, kind: isSheep ? 'sheep' : 'person' });
+      walkers.push({ g, home, homeY: groundAt(...home), speed: isSheep ? 1.4 : 2.4, target: [x, z], wait: Math.random() * 2, knocked: 0, kind: isSheep ? 'sheep' : 'person' });
     }
   });
 }
 const boxes = []; for (const w of walkers) w.g.children.forEach(c => { if (c.userData.isBox) { c.userData.base = c.scale.clone(); boxes.push(c); } });
-function showBoxes(at) { for (const b of boxes) b.userData.popAt = at + Math.random() * 1.8; } // each box pops in with its own delay
+function showBoxes(at) { // the boxes pop in one by one, from the nearest figure to the farthest
+  const cp = chassisBody.position, d = b => Math.hypot(b.parent.position.x - cp.x, b.parent.position.z - cp.z);
+  [...boxes].sort((a, b) => d(a) - d(b)).forEach((b, i) => { b.userData.popAt = at + i * 0.07; });
+}
 const bounce = k => k >= 1 ? 1 : 1 - Math.exp(-6 * k) * Math.cos(11 * k); // 0 → overshoot → settles at 1
 function updateBoxes(t) {
   for (const b of boxes) {
@@ -557,7 +563,7 @@ function updateWalkers(dt, t) {
     const dx = w.target[0] - p.x, dz = w.target[1] - p.z, d = Math.hypot(dx, dz);
     if (d < 0.5) { // pick a new spot near home, on gentle ground
       for (let k = 0; k < 8; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 14, tx = w.home[0] + Math.cos(a) * r, tz = w.home[1] + Math.sin(a) * r, ty = groundAt(tx, tz);
-        if (ty > WATER_Y + 0.5 && ty < 7) { w.target = [tx, tz]; break; } }
+        if (ty > WATER_Y + 0.5 && Math.abs(ty - w.homeY) < 4) { w.target = [tx, tz]; break; } }
       w.wait = 1 + Math.random() * 3; continue;
     }
     const step = Math.min(d, speed * dt), nx = p.x + dx / d * step, nz = p.z + dz / d * step;
@@ -581,7 +587,7 @@ const tmpC = new THREE.Color(), tmpM = new THREE.Matrix4();
 for (let i = 0; i < PARTS; i++) { parts.setMatrixAt(i, tmpM.makeScale(0, 0, 0)); parts.setColorAt(i, tmpC.set(0xffffff)); }
 function updateParticles(dt) {
   const v = chassisBody.velocity, sp = Math.hypot(v.x, v.z);
-  if (sp > 3 && started && !cardOpen) {
+  if (sp > 3 && started) {
     const fx = Math.sin(carYaw), fz = Math.cos(carYaw), n = sp > 10 ? 3 : 2;
     for (const wi of [2, 3]) for (let k = 0; k < n; k++) { // rear wheels
       const wp = chassisBody.pointToWorldFrame(WHEELS[wi], wheelW), surf = surfaceAt(wp.x, wp.z), q = pState[pNext];
@@ -695,7 +701,6 @@ const EMBEDDED = new URLSearchParams(location.search).has('embedded') && window.
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyC', 'KeyH', 'Enter'];
 window.addEventListener('keydown', e => {
   if (GAME_KEYS.includes(e.code)) e.preventDefault();
-  if (cardOpen) { if (!e.repeat && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) closeCard(); return; } // keys pressed over a card never drive the crawler
   const first = !keys[e.code]; keys[e.code] = true;
   if (!started) return;
   if (first && e.code === 'KeyC') toggleMode();
@@ -715,25 +720,12 @@ function toggleMode() {
 const $ = id => document.getElementById(id);
 function updateFrags() { const got = pickups.filter(q => q.got).length; for (let i = 0; i < 4; i++) $('arc' + i).classList.toggle('got', i < got); $('fragCount').textContent = `${got} / 4`; }
 let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 2600); }
-let cardOpen = false;
 let achTimer; function achievement(top, msg) { // Xbox-style banner, top right
   const a = $('ach'); $('achTop').textContent = top; $('achMsg').textContent = msg;
   a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
   clearTimeout(achTimer); achTimer = setTimeout(() => a.classList.remove('show'), 5200);
 }
 const popIn = el => { el.style.display = 'block'; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }; // stretch-and-bounce entrance
-function openCard(html) { releaseKeys(); $('cardBox').innerHTML = html; $('card').style.display = 'flex'; cardOpen = true; }
-function closeCard() {
-  if (EMBEDDED) { window.parent.postMessage({ type: 'coolcv:close-card' }, location.origin); return; } // the page answers with coolcv:resume
-  releaseKeys(); $('card').style.display = 'none'; cardOpen = false; canvas.focus();
-}
-window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.type === 'coolcv:resume') { releaseKeys(); cardOpen = false; canvas.focus(); } });
-function showFragment(p, unlock, extraHtml) {
-  const n = pickups.filter(q => q.got).length;
-  if (EMBEDDED) { releaseKeys(); cardOpen = true; window.parent.postMessage({ type: 'coolcv:fragment', id: p.id, title: p.title, unlock, n, last: p.id === 'exp' }, location.origin); return; }
-  openCard(`<h2>${p.title}</h2><div class="unlock">Fragment ${n} / 4 · ${unlock}</div>${p.html}${extraHtml}<div class="btns"><button data-close>Continue (Enter / Space)</button></div>`);
-}
-$('card').addEventListener('click', e => { if (e.target.id === 'card' || e.target.dataset.close !== undefined) closeCard(); });
 const hudOn = { speed: false, map: false };
 const mm = $('minimap').getContext('2d');
 const mmBase = (() => { // pre-render the minimap terrain
@@ -756,26 +748,47 @@ function drawMinimap(heading) {
   mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#ff3b30'; mm.beginPath(); mm.moveTo(0, -6); mm.lineTo(4, 4); mm.lineTo(-4, 4); mm.closePath(); mm.fill(); mm.restore();
 }
 
-const SECTION_NAMES = { edu: 'Education and Languages', proj: 'Projects and Skills', pub: 'Publications' };
+const SECTION_NAMES = { edu: 'Education and Languages', proj: 'Projects and Skills', pub: 'Publications', exp: 'Work Experience and Interests' };
 const UNLOCKS = ['Minimap', 'Obstacle detection', 'AR navigation']; // what the 1st, 2nd and 3rd page unlock
 function collect(p) {
   p.got = true; p.group.visible = false; updateFrags();
   burst(p.group.position.x, p.group.position.y, p.group.position.z); chime();
-  if (p.id === 'exp') { // the last page: confetti, then the closing card
-    chassisBody.velocity.set(0, 0, 0); cardOpen = true;
-    carpetOn = false; chevrons.count = 0;
-    confetti();
-    setTimeout(() => showFragment(p, 'HUD complete: the whole CV is yours', `<p><a class="btn" href="${PDF_URL}" target="_blank" rel="noopener">Open the full CV (PDF)</a></p>${creditsHtml()}`), 1400);
+  const last = p.id === 'exp', n = last ? 4 : pickups.slice(0, 3).filter(q => q.got).length; // 1st, 2nd or 3rd page, whatever the order
+  achievement(`Fragment ${n} / 4 · ${last ? 'HUD complete' : UNLOCKS[n - 1] + ' unlocked'}`, `${SECTION_NAMES[p.id]} added to the CV${EMBEDDED ? '. Scroll down to read them' : ''}`);
+  if (EMBEDDED) window.parent.postMessage({ type: 'coolcv:reveal', id: p.id, last }, location.origin); // the page shows those sections
+  if (last) { // confetti, a trophy rising from the summit, then the closing message
+    carpetOn = false; chevrons.count = 0; confetti(); raiseTrophy(p.group.position);
+    setTimeout(() => {
+      $('finaleCredits').innerHTML = creditsHtml();
+      if (!EMBEDDED) { $('finaleMsg').textContent = 'Head back to the CV page to read it all.'; $('finaleClose').textContent = 'Back to the CV'; }
+      $('finale').style.display = 'flex';
+    }, 3000);
     return;
   }
-  const n = pickups.slice(0, 3).filter(q => q.got).length; // 1st, 2nd or 3rd page, whatever the order
-  achievement(`Fragment ${n} / 4 · ${UNLOCKS[n - 1]} unlocked`, `${SECTION_NAMES[p.id]} added to the CV${EMBEDDED ? '. Scroll down to read them' : ''}`);
-  if (EMBEDDED) window.parent.postMessage({ type: 'coolcv:reveal', id: p.id }, location.origin); // the page shows those sections
   setTimeout(() => {
     if (n === 1) { hudOn.speed = hudOn.map = true; popIn($('minimap')); popIn(speedEl); }
     if (n === 2) showBoxes(clock.elapsedTime);
     if (n === 3) { carpetOn = true; carpetT0 = clock.elapsedTime; pickups[3].group.visible = true; toast('Follow the AR carpet to the highest summit'); }
   }, 2500);
+}
+$('finaleClose').addEventListener('click', () => { if (EMBEDDED) window.parent.postMessage({ type: 'coolcv:close' }, location.origin); else location.href = '../'; });
+
+// the trophy: rises from the summit and floats in the air
+const trophy = new THREE.Group(); trophy.visible = false; scene.add(trophy);
+{
+  const gold = toon({ color: 0xe3b341 }), dark = toon({ color: 0x6b4f1d });
+  const cup = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [0.55, 0], [0.55, 0.12], [0.18, 0.25], [0.14, 0.75], [0.3, 0.95], [0.85, 1.25], [0.95, 2.05], [0.88, 2.1], [0.75, 1.4], [0, 1.25]].map(([x, y]) => new THREE.Vector2(x, y)), 20), gold);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.35, 1.4), dark); base.position.y = -0.17;
+  for (const sx of [-1, 1]) { const h = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.09, 8, 16, Math.PI), gold); h.position.set(sx * 0.95, 1.6, 0); h.rotation.z = sx * -Math.PI / 2; trophy.add(h); }
+  trophy.add(cup, base); trophy.traverse(o => { if (o.isMesh) o.castShadow = true; }); trophy.scale.setScalar(1.8);
+}
+let trophyT0 = -1, trophyFrom = new THREE.Vector3();
+function raiseTrophy(at) { trophyFrom.copy(at); trophyT0 = clock.elapsedTime; trophy.visible = true; }
+function updateTrophy(t) {
+  if (trophyT0 < 0) return;
+  const k = Math.min(1, (t - trophyT0) / 2), e = 1 - Math.pow(1 - k, 3); // rise for two seconds, easing out…
+  trophy.position.set(trophyFrom.x, trophyFrom.y + e * 8 + (k >= 1 ? Math.sin((t - trophyT0 - 2) * 1.6) * 0.5 : 0), trophyFrom.z); // …then bob
+  trophy.rotation.y = (t - trophyT0) * 0.9; trophy.scale.setScalar(1.8 * Math.max(0.05, bounce(Math.min(1, (t - trophyT0) / 0.8))));
 }
 
 // ---------------------------------------------------------------- loop
@@ -786,23 +799,27 @@ camLook.set(START[0], groundAt(...START), START[1]);
 
 // Driving is arcade: on the ground the controller sets the car's speed and turn rate directly,
 // so speed is the same in every direction and on every slope. Wheels only do the suspension.
-const VMAX = 16 * 1.35, VBACK = 8 * 1.35; // 35% faster
+const VMAX = 16 * 1.35, VBACK = 8 * 1.35; // 'fast'; slow is half of it, super fast twice
+let holdT = 0; // how long the throttle has been held
+const rampSpeed = () => VMAX * (holdT < 2 ? 0.5 + 0.5 * holdT / 2 : 1 + Math.min(1, (holdT - 2) / 4));
 let driveMode = 'car'; // 'car' (default): up = throttle, left/right = steer · 'map': simplified, arrows point the car on screen
 // The crawler: it always sits on its four wheels. Input sets a heading and a ground speed; the body's height,
 // pitch and roll come from the terrain under the wheels. Physics only stops it at houses and the border cliffs.
 let carYaw = Math.PI; // facing north
 function control(h) {
-  const live = started && !cardOpen;
+  const live = started;
   let speed = 0, yawRate = 0;
+  const throttle = live && (driveMode === 'map' ? (left() || right() || fwd() || back()) : fwd());
+  holdT = throttle ? holdT + h : 0;
   if (live && driveMode === 'map') {
     const ix = (right() ? 1 : 0) - (left() ? 1 : 0), iz = (back() ? 1 : 0) - (fwd() ? 1 : 0);
     if (ix || iz) {
       let err = Math.atan2(ix, iz) - carYaw; while (err > Math.PI) err -= 2 * Math.PI; while (err < -Math.PI) err += 2 * Math.PI;
       yawRate = Math.max(-4, Math.min(4, err * 8));                                   // turn on the spot towards the arrow…
-      speed = Math.abs(err) < 0.25 ? VMAX : Math.abs(err) < 0.7 ? VMAX * 0.35 : 0;     // …then crawl, always at the same speed
+      speed = Math.abs(err) < 0.25 ? rampSpeed() : Math.abs(err) < 0.7 ? VMAX * 0.35 : 0; // …then go, faster the longer you hold
     }
   } else if (live) {
-    speed = fwd() ? VMAX : back() ? -VBACK : 0;
+    speed = fwd() ? rampSpeed() : back() ? -VBACK : 0;
     yawRate = ((left() ? 1 : 0) - (right() ? 1 : 0)) * 2.2 * (speed < 0 ? -1 : 1);
   }
   carYaw += yawRate * h;
@@ -826,7 +843,7 @@ function step(dt) {
 }
 let wheelSpin = 0;
 const ZF = new CANNON.Vec3(0, 0, 1), zfW = new CANNON.Vec3(), SUN_OFF = new THREE.Vector3(60, 110, 40), fwdV = new THREE.Vector3(), seatW = new THREE.Vector3(); // reused every frame
-const speedEl = $('speed'); let speedShown = -1;
+const speedEl = $('speed'), needleEl = $('needle'); let speedShown = -999, needleJ = 0, lastCarY = 0;
 
 let onScreen = true; // skip the work while the game is scrolled out of view (or its tab is hidden)
 new IntersectionObserver(e => { onScreen = e[0].isIntersecting; }).observe(canvas);
@@ -848,7 +865,7 @@ function frame() {
     if (p.got || !p.group.visible) continue;
     p.card.rotation.y = t * 1.5; p.card.position.y = 3 + Math.sin(t * 2) * 0.4;
     const d = Math.hypot(car.position.x - p.group.position.x, car.position.z - p.group.position.z);
-    if (d < 6.5 && !cardOpen) collect(p);
+    if (d < 6.5) collect(p);
   }
   // dog
   const dDog = Math.hypot(car.position.x - DOG_POS[0], car.position.z - DOG_POS[1]);
@@ -860,11 +877,16 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateBoxes(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
+  updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
-  if (hudOn.speed) { const v = Math.round(chassisBody.velocity.length() * 5); if (v !== speedShown) { speedShown = v; speedEl.innerHTML = `${v}<small>km/h (oversized)</small>`; } } // touch the DOM only when the number changes
+  if (hudOn.speed) { // needle: 0 → slow → fast → super fast, shaking with the bumps of the ground and a little at random
+    const r = chassisBody.velocity.length() / VMAX, base = r <= 0.5 ? -90 + r / 0.5 * 30 : r <= 1 ? -60 + (r - 0.5) / 0.5 * 60 : Math.min(2, r) * 60 - 60;
+    const bump = Math.min(14, Math.abs(car.position.y - lastCarY) / Math.max(dt, 1e-3) * 2.5); lastCarY = car.position.y;
+    needleJ += ((Math.random() - 0.5) * (r > 0.1 ? 10 : 1) + (Math.random() < 0.5 ? -bump : bump) - needleJ) * Math.min(1, dt * 12);
+    const a = Math.round((base + needleJ) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 60 62)`); }
+  }
   if (hudOn.map) drawMinimap(heading);
   renderer.render(scene, camera);
 }
@@ -877,4 +899,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
