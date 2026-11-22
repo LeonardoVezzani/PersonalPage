@@ -1,4 +1,4 @@
-# Jobride (Road to Hire) — credits
+# Jobride (A trip to Hire Ground) — credits
 
 Code: Leonardo Vezzani. Libraries: three.js (MIT), cannon-es (MIT), in `vendor/`.
 

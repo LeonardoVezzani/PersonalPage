@@ -224,7 +224,7 @@
         </a>
         <button type="button" id="cool-cv-btn"
            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md border-2 transition-colors"
-           title="Jobride, Road to Hire: drive around a mountain valley to collect my CV">
+           title="Jobride, A trip to Hire Ground: drive around a mountain valley to collect my CV">
           <span aria-hidden="true">🗺️</span>
           <span><i><b class="font-extrabold">Job</b><span class="font-normal">ride</span></i></span>
         </button>
@@ -248,13 +248,13 @@
     </header>
 
     <!-- Jobride: the game takes the place of the CV sections; each fragment found adds its sections back below -->
-    <section id="cool-cv-panel" class="mb-8 hidden" aria-label="Jobride, Road to Hire: a game">
+    <section id="cool-cv-panel" class="mb-8 hidden" aria-label="Jobride, A trip to Hire Ground: a game">
       <div class="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">
-        <h2 class="text-2xl font-bold"><i><b>Job</b><span class="font-normal">ride</span></i> <span class="ml-1 align-middle text-sm font-mono font-normal text-github-fg-muted dark:text-github-fg-dark-muted">Road to Hire</span></h2>
+        <h2 class="text-2xl font-bold"><i><b>Job</b><span class="font-normal">ride</span></i> <span class="ml-1 align-middle text-sm font-mono font-normal text-github-fg-muted dark:text-github-fg-dark-muted">A trip to Hire Ground</span></h2>
         <button type="button" id="cool-cv-close" class="px-3 py-1.5 text-sm font-medium rounded-md border-2 border-github-border-default dark:border-github-border-dark bg-white dark:bg-github-canvas-dark-subtle hover:border-github-accent-emphasis dark:hover:border-github-accent-dark">Show the whole CV ✕</button>
       </div>
       <div id="cool-cv-stage" class="relative mx-auto rounded-md overflow-hidden border-2 border-github-border-default dark:border-github-border-dark bg-black" style="width:min(100%, 78vh); aspect-ratio:1 / 1">
-        <iframe id="cool-cv-frame" title="Jobride, Road to Hire" class="absolute inset-0 w-full h-full border-0" allow="fullscreen"></iframe>
+        <iframe id="cool-cv-frame" title="Jobride, A trip to Hire Ground" class="absolute inset-0 w-full h-full border-0" allow="fullscreen"></iframe>
       </div>
     </section>
 
@@ -779,7 +779,7 @@
       function openGame() {
         sections().forEach(s => { s.classList.add('hidden'); s.style.opacity = ''; });
         panel.classList.remove('hidden');
-        frame.src = 'cool-cv/index.html?v=28&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        frame.src = 'cool-cv/index.html?v=29&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => frame.focus(), 400);
       }
