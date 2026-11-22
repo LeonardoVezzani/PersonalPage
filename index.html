@@ -758,21 +758,22 @@
     });
   </script>
 
-  <!-- Cool CV game -->
-  <div id="cool-cv-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-2 md:p-6" role="dialog" aria-modal="true" aria-label="Cool CV game">
-    <div class="relative w-full max-w-6xl bg-black rounded-lg overflow-hidden shadow-2xl border-2 border-github-accent-emphasis" style="height:min(80vh,720px)">
-      <button type="button" id="cool-cv-close" class="absolute top-2 right-2 z-10 px-2 py-1 text-xs font-medium rounded bg-white/90 text-black hover:bg-white" aria-label="Close game">Close ✕</button>
-      <iframe id="cool-cv-frame" title="Cool CV" class="w-full h-full border-0" allow="fullscreen"></iframe>
+  <!-- Cool CV game: a square window over the page, about a quarter of the screen -->
+  <div id="cool-cv-modal" class="fixed z-50 hidden flex-col rounded-lg overflow-hidden shadow-2xl border-2 border-github-accent-emphasis bg-black"
+       style="right:16px; bottom:16px; width:min(66vh, calc(100vw - 32px)); height:calc(min(66vh, calc(100vw - 32px)) + 30px)" role="dialog" aria-label="Cool CV game">
+    <div class="flex items-center justify-between px-3 text-xs font-medium text-white bg-github-accent-emphasis" style="height:30px">
+      <span>Cool CV · click the game, then use the arrows</span>
+      <button type="button" id="cool-cv-close" class="px-2 py-0.5 rounded bg-white/90 text-black hover:bg-white" aria-label="Close game">Close ✕</button>
     </div>
+    <iframe id="cool-cv-frame" title="Cool CV" class="w-full border-0 flex-1" allow="fullscreen"></iframe>
   </div>
   <script>
     (function () {
       const modal = document.getElementById('cool-cv-modal'), frame = document.getElementById('cool-cv-frame');
-      const open = () => { if (!frame.getAttribute('src')) frame.src = 'cool-cv/index.html'; modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.style.overflow = 'hidden'; setTimeout(() => frame.focus(), 50); };
-      const close = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); document.body.style.overflow = ''; };
+      const open = () => { if (!frame.getAttribute('src')) frame.src = 'cool-cv/index.html'; modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => frame.focus(), 50); };
+      const close = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
       document.getElementById('cool-cv-btn').addEventListener('click', open);
       document.getElementById('cool-cv-close').addEventListener('click', close);
-      modal.addEventListener('click', e => { if (e.target === modal) close(); });
       document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
     })();
   </script>

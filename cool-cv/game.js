@@ -142,14 +142,14 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9cc9e8);
 scene.background = new THREE.Color(0x2b3440);
-let VIEW = 18; // half height of the view, in world units
+let VIEW = 30; // half height of the view, in world units
 const camera = new THREE.OrthographicCamera(-VIEW, VIEW, VIEW, -VIEW, -200, 600);
 const CAM_OFFSET = new THREE.Vector3(0, 1, 0.9).normalize().multiplyScalar(160); // from the south, looking down ~48°
 scene.add(new THREE.HemisphereLight(0xdfefff, 0x5a6b3a, 0.9));
 const sun = new THREE.DirectionalLight(0xfff2d6, 1.6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 260 });
+Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 });
 scene.add(sun, sun.target);
 
 function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); const a = w / h; camera.left = -VIEW * a; camera.right = VIEW * a; camera.top = VIEW; camera.bottom = -VIEW; camera.updateProjectionMatrix(); }
@@ -211,18 +211,21 @@ world.defaultContactMaterial.friction = 0.3;
 
 // ---------------------------------------------------------------- the 4x4
 const START = (() => { const [x, z] = XZ('Torino'); return [x - 1, z + 24]; })();
-const chassisBody = new CANNON.Body({ mass: 160, angularDamping: 0.35, linearDamping: 0.05 });
-chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(1.05, 0.45, 2.1)), new CANNON.Vec3(0, 0.15, 0));
-chassisBody.position.set(START[0], groundAt(...START) + 3, START[1]);
+const CAR_SCALE = 2;
+const chassisBody = new CANNON.Body({ mass: 320, angularDamping: 0.4, linearDamping: 0.05 });
+chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(2.0, 0.75, 3.1)), new CANNON.Vec3(0, 0.55, 0)); // short box: big approach angles, no bumper digging into slopes
+chassisBody.position.set(START[0], groundAt(...START) + 5, START[1]);
 chassisBody.quaternion.setFromEuler(0, Math.PI, 0); // face north, towards Torino
 const vehicle = new CANNON.RaycastVehicle({ chassisBody, indexRightAxis: 0, indexUpAxis: 1, indexForwardAxis: 2 });
-const wheelOpts = { radius: 0.62, directionLocal: new CANNON.Vec3(0, -1, 0), suspensionStiffness: 28, suspensionRestLength: 0.55, frictionSlip: 2.2,
+const wheelOpts = { radius: 1.24, directionLocal: new CANNON.Vec3(0, -1, 0), suspensionStiffness: 28, suspensionRestLength: 1.1, frictionSlip: 4,
   dampingRelaxation: 2.4, dampingCompression: 4.2, maxSuspensionForce: 1e5, rollInfluence: 0.04, axleLocal: new CANNON.Vec3(-1, 0, 0),
-  chassisConnectionPointLocal: new CANNON.Vec3(), maxSuspensionTravel: 0.45, customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true };
-for (const [x, z] of [[1.05, 1.35], [-1.05, 1.35], [1.05, -1.35], [-1.05, -1.35]]) { wheelOpts.chassisConnectionPointLocal.set(x, -0.1, z); vehicle.addWheel({ ...wheelOpts }); }
+  chassisConnectionPointLocal: new CANNON.Vec3(), maxSuspensionTravel: 0.9, customSlidingRotationalSpeed: -30, useCustomSlidingRotationalSpeed: true };
+for (const [x, z] of [[2.1, 2.7], [-2.1, 2.7], [2.1, -2.7], [-2.1, -2.7]]) { wheelOpts.chassisConnectionPointLocal.set(x, -0.2, z); vehicle.addWheel({ ...wheelOpts }); }
 vehicle.addToWorld(world);
+const chassisMat = new CANNON.Material('chassis'); chassisBody.material = chassisMat;
+world.addContactMaterial(new CANNON.ContactMaterial(chassisMat, world.defaultMaterial, { friction: 0.02, restitution: 0.1 }));
 
-const car = new THREE.Group(); scene.add(car);
+const car = new THREE.Group(); car.scale.setScalar(CAR_SCALE); scene.add(car);
 {
   const mat = c => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
   const add = (geo, m, x, y, z, parent = car) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; parent.add(o); return o; };
@@ -236,7 +239,7 @@ const car = new THREE.Group(); scene.add(car);
 }
 car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, 1.35, -0.6); car.add(car.userData.seat);
 const wheelMeshes = vehicle.wheelInfos.map(() => {
-  const g = new THREE.CylinderGeometry(0.62, 0.62, 0.5, 12); g.rotateZ(Math.PI / 2);
+  const g = new THREE.CylinderGeometry(1.24, 1.24, 1.0, 12); g.rotateZ(Math.PI / 2);
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0x1d1d1d, flatShading: true })); m.castShadow = true; scene.add(m); return m;
 });
 
@@ -248,7 +251,29 @@ function label(text, x, z, lift = 10, scale = 1) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
   s.scale.set(13 * scale, 3.25 * scale, 1); s.position.set(x, groundAt(x, z) + lift, z); scene.add(s); return s;
 }
-for (const name of ['Torino', 'Susa', 'Lanzo', 'Asti', 'Cuneo', 'Alba', 'Alessandria', 'Novara', 'Vercelli', 'Biella', 'Ivrea', 'Domodossola', 'Balme']) { const [x, z] = XZ(name); label(name, x, z, 7, 0.8); }
+{ // towns: little houses, no names (and no colliders)
+  const TOWNS = { Torino: 34, Novara: 14, Alessandria: 14, Asti: 12, Cuneo: 12, Vercelli: 10, Biella: 10, Ivrea: 9, Alba: 9, Domodossola: 8, Susa: 7, Lanzo: 7, Ceres: 5, Balme: 5 };
+  const total = Object.values(TOWNS).reduce((a, b) => a + b, 0);
+  const walls = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 2, 2.4), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), total);
+  const roofGeo = new THREE.ConeGeometry(2.1, 1.5, 4); roofGeo.rotateY(Math.PI / 4);
+  const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), total);
+  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), V = new THREE.Vector3(), C = new THREE.Color();
+  const wallCols = [0xf3e6c8, 0xf6d8a8, 0xeadfcf, 0xf0c9a0], roofCols = [0xb5523b, 0xa3442f, 0x8f3b2a, 0x6d6a66];
+  let n = 0, seed = 1;
+  for (const [name, count] of Object.entries(TOWNS)) {
+    const [cx, cz] = XZ(name), r = 4 + Math.sqrt(count) * 2.6;
+    for (let k = 0, tries = 0; k < count && tries < count * 8; tries++) {
+      seed++; const a = hash(seed, 3) * Math.PI * 2, d = Math.sqrt(hash(seed, 5)) * r, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = groundAt(x, z);
+      if (y < WATER_Y + 0.3) continue;
+      const sc = 0.8 + hash(seed, 9) * 0.5, h = 0.8 + hash(seed, 11) * (name === 'Torino' ? 1.2 : 0.5);
+      Q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), hash(seed, 13) * Math.PI);
+      M.compose(V.set(x, y + h, z), Q, S.set(sc, h, sc)); walls.setMatrixAt(n, M); walls.setColorAt(n, C.set(wallCols[seed % 4]));
+      M.compose(V.set(x, y + 2 * h + 0.75 * sc, z), Q, S.set(sc, sc, sc)); roofs.setMatrixAt(n, M); roofs.setColorAt(n, C.set(roofCols[seed % 4]));
+      n++; k++;
+    }
+  }
+  walls.count = roofs.count = n; walls.castShadow = roofs.castShadow = true; walls.receiveShadow = true; scene.add(walls, roofs);
+}
 for (const name of ['Monviso', 'Monte Rosa', 'Lago Maggiore']) { const [x, z] = XZ(name); label(name, x, z, 9, 1.1); }
 { const [x, z] = toXZ(7.2, 45.17); label('Val di Susa', x, z, 6, 0.8); }
 { const [x, z] = toXZ(7.38, 45.36); label('Valli di Lanzo', x, z, 6, 0.8); }
@@ -300,7 +325,7 @@ const dog = new THREE.Group();
   dog.userData.tail = add(new THREE.BoxGeometry(0.1, 0.1, 0.5), fur, 0, 0.95, -0.7);
   dog.userData.head = head;
   dog.position.set(DOG_POS[0], groundAt(...DOG_POS), DOG_POS[1]);
-  dog.scale.setScalar(1.25);
+  dog.scale.setScalar(2.2);
   scene.add(dog);
 }
 // ---------------------------------------------------------------- optional glTF models
@@ -360,12 +385,18 @@ function updateCarpet(t) {
 // ---------------------------------------------------------------- input
 const keys = {};
 const GAME_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyR'];
-window.addEventListener('keydown', e => { if (GAME_KEYS.includes(e.code)) e.preventDefault(); keys[e.code] = true; if (e.code === 'KeyR') resetCar(); if (cardOpen && (e.code === 'Enter' || e.code === 'Escape')) closeCard(); });
+window.addEventListener('keydown', e => { if (GAME_KEYS.includes(e.code)) e.preventDefault(); if (!keys[e.code] && (e.code === 'Space' || e.code === 'KeyR') && started && !cardOpen) jump(); keys[e.code] = true; if (cardOpen && (e.code === 'Enter' || e.code === 'Escape')) closeCard(); });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 const fwd = () => keys.KeyW || keys.ArrowUp, back = () => keys.KeyS || keys.ArrowDown, left = () => keys.KeyA || keys.ArrowLeft, right = () => keys.KeyD || keys.ArrowRight;
+function jump() { // Space: hop, or back on the wheels when upside down
+  const up = chassisBody.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
+  const touching = wheelContact.some(Boolean);
+  if (up.y < 0.35) { resetCar(); chassisBody.velocity.y = 8; return; }
+  if (touching) chassisBody.velocity.y += 14;
+}
 function resetCar() {
   const p = chassisBody.position, e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...chassisBody.quaternion.toArray()), 'YXZ');
-  chassisBody.position.set(p.x, groundAt(p.x, p.z) + 3, p.z);
+  chassisBody.position.set(p.x, groundAt(p.x, p.z) + 4, p.z);
   chassisBody.quaternion.setFromEuler(0, e.y, 0, 'YXZ');
   chassisBody.velocity.setZero(); chassisBody.angularVelocity.setZero();
 }
@@ -425,7 +456,7 @@ let started = false;
 camLook.set(START[0], groundAt(...START), START[1]);
 
 function step(dt) {
-  const inAir = vehicle.wheelInfos.every(w => !w.isInContact);
+  const inAir = wheelContact.every(c => !c);
   const speed = chassisBody.velocity.length();
   // screen-relative driving: up = north, right = east (the camera never rotates)
   const live = started && !cardOpen;
@@ -438,11 +469,30 @@ function step(dt) {
     steerTarget = STEER_SIGN * Math.max(-1, Math.min(1, err * 1.6)) * (0.6 - Math.min(0.3, speed * 0.008));
     engine = Math.abs(err) > 2.4 && speed < 2 ? -0.6 : 1 - Math.min(0.6, Math.abs(err) / 3);
   }
-  for (const i of [2, 3]) vehicle.applyEngineForce(-engine * 650, i);
-  for (const i of [0, 1]) vehicle.applyEngineForce(-engine * 300, i);
+  for (const i of [2, 3]) vehicle.applyEngineForce(-engine * 2600, i);
+  for (const i of [0, 1]) vehicle.applyEngineForce(-engine * 1200, i);
   for (const i of [0, 1]) vehicle.setSteeringValue(steerTarget, i);
-  const brake = keys.Space ? 14 : engine === 0 ? 0.6 : 0;
+  const brake = engine === 0 ? 4 : 0;
   for (let i = 0; i < 4; i++) vehicle.setBrake(brake, i);
+  const grounded = wheelContact.filter(Boolean).length >= 2;
+  const cpos = chassisBody.position, clearance = cpos.y - groundAt(cpos.x, cpos.z);
+  if (grounded || clearance < 3.4) { // arcade climbing on any slope
+    const m = chassisBody.mass, e = 1.5;
+    const nrm = new CANNON.Vec3(groundAt(cpos.x - e, cpos.z) - groundAt(cpos.x + e, cpos.z), 2 * e, groundAt(cpos.x, cpos.z - e) - groundAt(cpos.x, cpos.z + e)); nrm.normalize();
+    const up = q0.vmult(new CANNON.Vec3(0, 1, 0));
+    if (up.dot(nrm) > 0.2) {
+      // keep the car flat on the ground: rotate its up towards the ground normal, damp roll and pitch wobble
+      const ax = up.cross(nrm); chassisBody.angularVelocity.vadd(ax.scale(14 * dt), chassisBody.angularVelocity);
+      const w = chassisBody.angularVelocity, yawPart = nrm.scale(w.dot(nrm)); const tilt = w.vsub(yawPart);
+      chassisBody.angularVelocity.copy(yawPart.vadd(tilt.scale(Math.exp(-6 * dt))));
+      // cancel the downhill pull of gravity, then push along the slope
+      const gDotN = -20 * nrm.y, gt = new CANNON.Vec3(-gDotN * nrm.x, -20 - gDotN * nrm.y, -gDotN * nrm.z);
+      chassisBody.applyForce(gt.scale(-m));
+      if (engine) { const ft = f.vsub(nrm.scale(f.dot(nrm))); ft.normalize(); const along = chassisBody.velocity.dot(ft) * Math.sign(engine); if (along < 26) chassisBody.applyForce(ft.scale(engine * 16 * m)); }
+    }
+  }
+  const hv = Math.hypot(chassisBody.velocity.x, chassisBody.velocity.z);
+  if (hv > 34) { chassisBody.velocity.x *= 34 / hv; chassisBody.velocity.z *= 34 / hv; }
   if (inAir && started && !cardOpen) { // air control: flips and barrel rolls
     const q = chassisBody.quaternion, right = q.vmult(new CANNON.Vec3(1, 0, 0)), fwdAx = q.vmult(new CANNON.Vec3(0, 0, 1));
     const pitch = (fwd() ? 1 : 0) - (back() ? 1 : 0), roll = (right_() ? 1 : 0) - (left() ? 1 : 0);
@@ -450,10 +500,12 @@ function step(dt) {
     chassisBody.angularVelocity.vadd(fwdAx.scale(roll * 6 * dt), chassisBody.angularVelocity);
   }
   world.step(1 / 60, dt, 4);
+  vehicle.wheelInfos.forEach((w, i) => (wheelContact[i] = w.isInContact)); // read before the visual update resets them
   const cp = chassisBody.position;
   if (!inAir && cp.y > OUTSIDE_Y + 3) { safeT += dt; if (safeT > 1) { safeT = 0; lastSafe.copy(cp); } }
-  if (cp.y < OUTSIDE_Y + 1) { chassisBody.position.set(lastSafe.x, groundAt(lastSafe.x, lastSafe.z) + 3, lastSafe.z); chassisBody.velocity.setZero(); chassisBody.angularVelocity.setZero(); toast("That's the end of Piemonte. Back you go!"); }
+  if (cp.y < OUTSIDE_Y + 1) { chassisBody.position.set(lastSafe.x, groundAt(lastSafe.x, lastSafe.z) + 5, lastSafe.z); chassisBody.velocity.setZero(); chassisBody.angularVelocity.setZero(); toast("That's the end of Piemonte. Back you go!"); }
 }
+const wheelContact = [false, false, false, false];
 let safeT = 0; const lastSafe = new CANNON.Vec3(START[0], 0, START[1]);
 const right_ = right;
 const STEER_SIGN = 1;
@@ -473,23 +525,23 @@ function frame() {
     if (p.got || !p.group.visible) continue;
     p.card.rotation.y = t * 1.5; p.card.position.y = 3 + Math.sin(t * 2) * 0.4;
     const d = Math.hypot(car.position.x - p.group.position.x, car.position.z - p.group.position.z);
-    if (d < 4.5 && !cardOpen) collect(p);
+    if (d < 7.5 && !cardOpen) collect(p);
   }
   // dog
   const dDog = Math.hypot(car.position.x - DOG_POS[0], car.position.z - DOG_POS[1]);
   if (dogState === 'waiting') {
     dog.userData.tail.rotation.y = Math.sin(t * 10) * 0.6; dog.lookAt(car.position.x, dog.position.y, car.position.z);
-    if (dDog < 7 && chassisBody.velocity.length() < 6) { dogState = 'jumping'; dogJumpT = 0; dogJumpFrom.copy(dog.position); toast('Your co-pilot just jumped aboard!'); }
+    if (dDog < 11 && chassisBody.velocity.length() < 8) { dogState = 'jumping'; dogJumpT = 0; dogJumpFrom.copy(dog.position); toast('Your co-pilot just jumped aboard!'); }
   } else if (dogState === 'jumping') {
     dogJumpT += dt / 0.7; const to = car.userData.seat.getWorldPosition(new THREE.Vector3());
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
-    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, 0, 0); dog.scale.setScalar(0.85); }
+    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, 0, 0); dog.scale.setScalar(0.55); }
   } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; }
   for (const m of mixers) m.update(dt);
   updateCarpet(t);
   // HUD
   const fwdV = new THREE.Vector3(0, 0, 1).applyQuaternion(car.quaternion), heading = Math.atan2(fwdV.x, -fwdV.z);
-  if (hudOn.speed) $('speed').innerHTML = `${Math.round(chassisBody.velocity.length() * 9)}<small>km/h (oversized)</small>`;
+  if (hudOn.speed) $('speed').innerHTML = `${Math.round(chassisBody.velocity.length() * 5)}<small>km/h (oversized)</small>`;
   if (hudOn.alt) { const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']; const hdg = (heading * 180 / Math.PI + 360) % 360; $('alt').innerHTML = `ALT ${Math.round(Math.max(0, car.position.y) * 170 + 150)} m<br>HDG ${Math.round(hdg)}° ${dirs[Math.round(hdg / 45) % 8]}`; }
   if (hudOn.map) drawMinimap(heading);
   renderer.render(scene, camera);
@@ -504,4 +556,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, chassisBody, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, world, jump, chassisBody, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
