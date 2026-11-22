@@ -68,11 +68,12 @@ function height(wx, wz) {
 }
 
 // ---------------------------------------------------------------- CV content
+const PAGE_BLUE = 0x2f6fb5; // the CV pages, their beams, markers and sparkles
 const CV = [ // the four CV pages hidden in the valley; their content is the CV page itself, revealed as you find them
-  { id: 'edu', pos: polar(90, 52), color: 0xcf222e },
-  { id: 'proj', pos: polar(210, 52), color: 0xcf222e },
-  { id: 'pub', pos: polar(330, 52), color: 0xcf222e },
-  { id: 'exp', pos: SUMMIT, color: 0xcf222e }, // the last one, on the highest summit of the ring
+  { id: 'edu', pos: polar(90, 52), color: PAGE_BLUE },
+  { id: 'proj', pos: polar(210, 52), color: PAGE_BLUE },
+  { id: 'pub', pos: polar(330, 52), color: PAGE_BLUE },
+  { id: 'exp', pos: SUMMIT, color: PAGE_BLUE }, // the last one, on the highest summit of the ring
 ];
 const CARPET_ROUTE = [];
 const DOG_POS = (() => { // somewhere new every game: up on the mountains, at least a screen away from every CV page and from the start
@@ -82,7 +83,7 @@ const DOG_POS = (() => { // somewhere new every game: up on the mountains, at le
   return polar(225, 84);
 })();
 const DOG_WAIT_K = 1.3; // the waiting dog is 30% bigger
-const dogRing = new THREE.Mesh(new THREE.RingGeometry(0, 2.6, 40, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange disc under the waiting dog; it follows the slope (see below)
+const dogRing = new THREE.Mesh(new THREE.RingGeometry(1.8, 2.6, 40, 2).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange ring around the waiting dog; it follows the slope (see below)
 dogRing.renderOrder = 2;
 
 // ---------------------------------------------------------------- phones
@@ -634,8 +635,8 @@ function updateParticles(dt) {
   if (alive || partsWasAlive) parts.instanceMatrix.needsUpdate = true; partsWasAlive = alive;
 }
 
-function burst(x, y, z, n = Math.round(46 * FX)) { // the little red explosion when a CV page is picked up
-  const cols = [0xcf222e, 0xff5a5f, 0xff8a8a, 0xffffff];
+function burst(x, y, z, n = Math.round(46 * FX)) { // the little blue explosion when a CV page is picked up
+  const cols = [PAGE_BLUE, 0x5b9be0, 0x9cc4f0, 0xffffff];
   for (let k = 0; k < n; k++) {
     const q = pState[pNext], a = Math.random() * Math.PI * 2, sp = 3 + Math.random() * 6;
     Object.assign(q, { life: 0.7 + Math.random() * 0.6, x, y: y + 3, z, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 5 + Math.random() * 8, s: 0.6 + Math.random() * 0.6 });
@@ -792,7 +793,7 @@ function drawMinimap(heading) {
   const { c, x0, x1, z0, z1 } = mmBase; mm.clearRect(0, 0, 150, 190); mm.drawImage(c, 0, 0);
   const toM = (x, z) => [(x - x0) / (x1 - x0) * 149, (z - z0) / (z1 - z0) * 189];
   for (const p of pickups) { if (p.got || !p.group.visible) continue; const [mx, my] = toM(...p.pos); mm.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); mm.fillRect(mx - 3, my - 3, 6, 6); }
-  if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.fillStyle = '#2f6fb5'; mm.strokeStyle = '#ffffff'; mm.lineWidth = 2; mm.beginPath(); mm.arc(dx, dy, 4.5, 0, Math.PI * 2); mm.fill(); mm.stroke(); } // the dog: a blue dot
+  if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.fillStyle = '#ff8a1f'; mm.strokeStyle = '#ffffff'; mm.lineWidth = 2; mm.beginPath(); mm.arc(dx, dy, 4.5, 0, Math.PI * 2); mm.fill(); mm.stroke(); } // the dog: an orange dot, like its ring
   const [cx, cy] = toM(chassisBody.position.x, chassisBody.position.z);
   mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#e7c76f'; mm.strokeStyle = '#3a2a24'; mm.lineWidth = 1.5; mm.beginPath(); mm.moveTo(0, -7); mm.lineTo(5, 5); mm.lineTo(-5, 5); mm.closePath(); mm.fill(); mm.stroke(); mm.restore(); // the crawler, mustard like the car
 }
@@ -974,7 +975,7 @@ let frameNo = 0;
 
 $('loading').style.display = 'none';
 const startEl = $('start'); startEl.style.display = 'flex';
-const begin = () => { if (started) return; started = true; startEl.style.display = 'none'; canvas.focus(); toast('Follow the red beams to the fragments'); };
+const begin = () => { if (started) return; started = true; startEl.style.display = 'none'; canvas.focus(); toast('Follow the blue beams to the fragments'); };
 startEl.addEventListener('click', begin); $('startBtn').addEventListener('click', begin);
 window.addEventListener('keydown', begin, { once: true });
 frame();

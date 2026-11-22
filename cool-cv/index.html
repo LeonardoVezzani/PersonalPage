@@ -7,7 +7,7 @@
 <title>Cool CV — Leonardo Vezzani</title>
 <style>
   /* The game's own palette (cream, sand, earth brown, terracotta, the pages' red), the same in both page themes */
-  :root { --bg: #f4ecd4; --subtle: #e6d8b2; --border: #7a5a2a; --fg: #3a2a24; --muted: #7d6a52; --accent: #b4654f; --red: #cf222e; }
+  :root { --bg: #f4ecd4; --subtle: #e6d8b2; --border: #7a5a2a; --fg: #3a2a24; --muted: #7d6a52; --accent: #b4654f; --red: #cf222e; --page: #2f6fb5; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #2e2c2d; font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; color: var(--fg); }
   canvas#game { display: block; width: 100%; height: 100%; outline: none; touch-action: none; cursor: crosshair; -webkit-tap-highlight-color: transparent; }
   html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
@@ -43,12 +43,12 @@
   #finaleCredits p { margin: 2px 0; } #finaleCredits ul { margin: 2px 0 4px; padding-left: 16px; }
   .panel .muted b { color: var(--fg); }
   #frags path[id^="arc"] { stroke: var(--border); transition: stroke .3s; }
-  #frags path.got { stroke: var(--red); }
+  #frags path.got { stroke: var(--page); }
   #docIcon { stroke: var(--fg); }
   /* achievement banner, top right: a round badge that opens into a pill */
   #ach { right: 10px; top: 10px; display: flex; align-items: center; min-height: 52px; max-width: 52px; border-radius: 26px; overflow: hidden; background: #3a2a24; color: #f4ecd4; border: 2px solid var(--border); box-shadow: 0 4px 14px rgba(0,0,0,.35); opacity: 0; transform: scale(.4); transition: transform .35s cubic-bezier(.3,1.7,.5,1), opacity .2s, max-width .5s cubic-bezier(.2,.9,.3,1.1) .3s; }
   #ach.show { opacity: 1; transform: none; max-width: min(520px, calc(100% - 190px)); } /* never under the minimap */
-  #ach .badge { flex: 0 0 44px; align-self: flex-start; height: 44px; margin: 4px; border-radius: 50%; background: #cf222e; display: flex; align-items: center; justify-content: center; }
+  #ach .badge { flex: 0 0 44px; align-self: flex-start; height: 44px; margin: 4px; border-radius: 50%; background: var(--page); display: flex; align-items: center; justify-content: center; }
   #ach .badge svg { width: 26px; height: 26px; }
   #ach .txt { padding: 6px 20px 6px 6px; min-width: 240px; line-height: 1.3; }
   #ach small { display: block; font-size: 10px; color: #d2c69d; }
@@ -130,6 +130,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=26"></script>
+<script type="module" src="./game.js?v=27"></script>
 </body>
 </html>
