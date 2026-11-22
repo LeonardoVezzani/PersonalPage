@@ -88,7 +88,7 @@ const scene = new THREE.Scene();
 const PAL = {
   bg: 0x2e2c2d, base: 0x3a2a24, water: 0x3fb6c8, sand: 0xd2c69d, meadow: 0xa4a24c, grass: 0x858a33, olive: 0x6c6f2a,
   dirt: 0x7a5a2a, rock: 0x6e6b67, rockDark: 0x545457, rockLight: 0xaba080, snow: 0xefeadb,
-  wall: 0xe7c76f, roof: 0xe74507, tree: 0x4a4c19, ar: 0x00cfe7,
+  wall: 0xe7c76f, roof: 0xb4654f, tree: 0x4a4c19, ar: 0x00cfe7,
 };
 scene.background = new THREE.Color(PAL.bg);
 // NPR: toon ramp with three hard steps, plus a soft ink darkening where surfaces turn away from the camera
@@ -99,9 +99,57 @@ function inkify(mat) {
   return mat;
 }
 const toon = (opts) => inkify(new THREE.MeshToonMaterial({ gradientMap: TOON_RAMP, ...opts }));
+// NPR terrain textures, drawn in the shader in world space: two-tone patches, grass strokes, a few flowers,
+// hatching on steep rock and little wave dashes on the water. They break up the flat colour fills.
+function terrainToon() {
+  const mat = new THREE.MeshToonMaterial({ gradientMap: TOON_RAMP, vertexColors: true });
+  mat.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWPos; varying vec3 vWN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vWPos; varying vec3 vWN;
+float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  vec2 q = vWPos.xz; vec3 n = normalize(vWN); vec3 c = diffuseColor.rgb;
+  float water = step(0.25, c.b - c.r), land = 1.0 - water;
+  float green = step(0.03, c.g - c.b) * step(0.8, n.y) * land;
+  float blot = vn(q * 0.05) * 0.6 + vn(q * 0.13 + 7.0) * 0.4;
+  c *= 1.0 - 0.11 * step(0.63, blot) * land;                    // darker patches
+  c *= 1.0 + 0.09 * step(blot, 0.3) * land;                     // lighter patches
+  vec2 g = q / 2.4, cell = floor(g), fp = fract(g); float r = h21(cell);
+  if (green > 0.5 && r > 0.5) {                                 // grass strokes
+    vec2 d = fp - (vec2(h21(cell + 3.1), h21(cell + 7.7)) * 0.6 + 0.2);
+    float stroke = max(step(abs(d.x + d.y * 0.35), 0.05) * step(abs(d.y), 0.26), step(abs(d.x - 0.12 - d.y * 0.2), 0.045) * step(abs(d.y + 0.05), 0.18));
+    c = mix(c, c * 0.55, stroke);
+  }
+  if (green > 0.5 && r < 0.045 && blot < 0.55) {                // a few flowers
+    float f = step(length(fp - 0.5), 0.1);
+    c = mix(c, h21(cell + 1.3) > 0.5 ? vec3(0.86, 0.83, 0.7) : vec3(0.47, 0.14, 0.08), f);
+  }
+  float steep = (1.0 - smoothstep(0.5, 0.78, n.y)) * land;     // hatching on steep slopes
+  c *= 1.0 - 0.32 * steep * step(0.72, fract((q.x + q.y + vWPos.y * 0.6) * 0.9));
+  if (water > 0.5) {                                            // wave dashes on the lake
+    vec2 w = vec2(q.x * 0.5, q.y * 1.6), wc = floor(w), wf = fract(w);
+    float dash = step(0.88, h21(wc)) * step(abs(wf.y - 0.5), 0.07) * step(abs(wf.x - 0.5), 0.3);
+    c = mix(c, vec3(0.75, 0.93, 0.95), dash);
+  }
+  diffuseColor.rgb = c;
+}`)
+      .replace('#include <opaque_fragment>', 'float inkRim = dot(normalize(normal), normalize(vViewPosition));\n  outgoingLight *= mix(0.62, 1.0, smoothstep(0.1, 0.3, inkRim));\n  #include <opaque_fragment>');
+  };
+  return mat;
+}
 function toonify(root) { // swap a model's PBR materials for toon ones with the same colours and textures
   root.traverse(o => { if (!o.isMesh) return;
-    const conv = m => toon({ color: m.color, map: m.map || null, transparent: m.transparent, opacity: m.opacity, side: m.side });
+    const conv = m => {
+      const col = m.color.clone();
+      if (/telhado|roof/i.test(m.name)) col.set(PAL.roof);                  // house roof: muted terracotta instead of bright orange
+      else if (col.r > 0.6 && col.g < 0.05 && col.b < 0.05) col.set(0x9a4a3c); // the house's red details, muted too
+      return toon({ color: col, map: m.map || null, transparent: m.transparent, opacity: m.opacity, side: m.side });
+    };
     o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material); o.castShadow = true; });
   return root;
 }
@@ -154,7 +202,7 @@ function groundAt(x, z) { // bilinear on the samples, matches the meshes closely
     c.set(hex); for (let v = 0; v < 3; v++) col.set([c.r, c.g, c.b], o + v * 3);
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const terrain = new THREE.Mesh(g, toon({ vertexColors: true }));
+  const terrain = new THREE.Mesh(g, terrainToon());
   terrain.receiveShadow = true; scene.add(terrain);
 }
 
