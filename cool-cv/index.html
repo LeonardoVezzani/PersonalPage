@@ -37,6 +37,9 @@
   .panel td { padding: 3px 10px 3px 0; vertical-align: top; }
   .panel td.keys { white-space: nowrap; }
   .panel .muted { color: var(--muted); }
+  .panel .link { margin-left: auto; align-self: flex-end; border: none; background: none; padding: 2px 0; font-size: 11px; color: var(--muted); text-decoration: underline; }
+  #finaleCredits { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--muted); }
+  #finaleCredits p { margin: 2px 0; } #finaleCredits ul { margin: 2px 0 4px; padding-left: 16px; }
   .panel .muted b { color: var(--fg); }
   #frags path[id^="arc"] { stroke: var(--border); transition: stroke .3s; }
   #frags path.got { stroke: var(--red); }
@@ -91,8 +94,8 @@
 <div id="finale"><div class="panel">
   <h2>🏆 You collected the whole CV!</h2>
   <p id="finaleMsg">Every section is now in the page: scroll down to read it.</p>
-  <div id="finaleCredits"></div>
-  <div class="btns"><button class="primary" id="finaleClose">Close game</button></div>
+  <div class="btns"><button class="primary" id="finaleClose">Close game</button><button id="finaleCreditsBtn" class="link">credits ▸</button></div>
+  <div id="finaleCredits" hidden></div>
 </div></div>
 
 <div id="start">
@@ -111,6 +114,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=19"></script>
+<script type="module" src="./game.js?v=20"></script>
 </body>
 </html>
