@@ -209,6 +209,30 @@ world.defaultContactMaterial.friction = 0.3;
   world.addBody(body);
 }
 
+// ---------------------------------------------------------------- border: a ring of sheer cliffs
+let borderWall;
+const BORDER_SEGS = BORDER.map((p, i) => [p, BORDER[(i + 1) % BORDER.length]]);
+{
+  // physics: one tall static box per border segment, so the car can never leave Piemonte
+  for (const [[ax, az], [bx, bz]] of BORDER_SEGS) {
+    const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz); if (L < 0.01) continue;
+    const b = new CANNON.Body({ mass: 0 }); b.addShape(new CANNON.Box(new CANNON.Vec3(L / 2 + 0.8, 60, 1.5)));
+    b.position.set((ax + bx) / 2, 30, (az + bz) / 2); b.quaternion.setFromEuler(0, Math.atan2(-dz, dx), 0); world.addBody(b);
+  }
+  // visual: a jagged rock wall standing on the border line
+  const pos = [], col = [], idx = [], rock = new THREE.Color(0x7b736b), rock2 = new THREE.Color(0x5f5953), snow = new THREE.Color(0xf1f3f5), c = new THREE.Color();
+  BORDER.forEach(([x, z], i) => {
+    let g = -1e9; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; g = Math.max(g, groundAt(x + Math.cos(a) * 4, z + Math.sin(a) * 4)); }
+    const top = Math.max(g, 1) + 9 + 6 * ridge(x * 0.05, z * 0.05);
+    pos.push(x, OUTSIDE_Y, z, x, top, z);
+    c.copy(rock2); col.push(c.r, c.g, c.b); c.copy(top > 22 ? snow : rock); col.push(c.r, c.g, c.b);
+    const j = (i + 1) % BORDER.length; idx.push(2 * i, 2 * j, 2 * i + 1, 2 * i + 1, 2 * j, 2 * j + 1);
+  });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+  const wall = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, transparent: true, opacity: 1 })); wall.castShadow = true; wall.receiveShadow = true; scene.add(wall);
+  borderWall = wall;
+}
+
 // ---------------------------------------------------------------- the 4x4
 const START = (() => { const [x, z] = XZ('Torino'); return [x - 1, z + 24]; })();
 const CAR_SCALE = 2;
@@ -253,7 +277,7 @@ function label(text, x, z, lift = 10, scale = 1) {
 }
 { // towns: little houses, no names (and no colliders)
   const TOWNS = { Torino: 34, Novara: 14, Alessandria: 14, Asti: 12, Cuneo: 12, Vercelli: 10, Biella: 10, Ivrea: 9, Alba: 9, Domodossola: 8, Susa: 7, Lanzo: 7, Ceres: 5, Balme: 5 };
-  const total = Object.values(TOWNS).reduce((a, b) => a + b, 0);
+  const SCATTER = 160, total = Object.values(TOWNS).reduce((a, b) => a + b, 0) + SCATTER;
   const walls = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 2, 2.4), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), total);
   const roofGeo = new THREE.ConeGeometry(2.1, 1.5, 4); roofGeo.rotateY(Math.PI / 4);
   const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), total);
@@ -272,26 +296,39 @@ function label(text, x, z, lift = 10, scale = 1) {
       n++; k++;
     }
   }
+  for (let k = 0, tries = 0; k < SCATTER && tries < SCATTER * 20; tries++) { // farmhouses here and there
+    seed++; const x = (hash(seed, 21) - 0.5) * 430, z = (hash(seed, 23) - 0.5) * 540, y = groundAt(x, z);
+    if (y < WATER_Y + 0.5 || y > 10 || distSegs(x, z, BORDER_SEGS) < 10) continue;
+    const sc = 0.75 + hash(seed, 9) * 0.4, h = 0.7 + hash(seed, 11) * 0.4;
+    Q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), hash(seed, 13) * Math.PI);
+    M.compose(V.set(x, y + h, z), Q, S.set(sc, h, sc)); walls.setMatrixAt(n, M); walls.setColorAt(n, C.set(wallCols[seed % 4]));
+    M.compose(V.set(x, y + 2 * h + 0.75 * sc, z), Q, S.set(sc, sc, sc)); roofs.setMatrixAt(n, M); roofs.setColorAt(n, C.set(roofCols[seed % 4]));
+    n++; k++;
+  }
   walls.count = roofs.count = n; walls.castShadow = roofs.castShadow = true; walls.receiveShadow = true; scene.add(walls, roofs);
 }
 for (const name of ['Monviso', 'Monte Rosa', 'Lago Maggiore']) { const [x, z] = XZ(name); label(name, x, z, 9, 1.1); }
 { const [x, z] = toXZ(7.2, 45.17); label('Val di Susa', x, z, 6, 0.8); }
 { const [x, z] = toXZ(7.38, 45.36); label('Valli di Lanzo', x, z, 6, 0.8); }
-{ // Mole Antonelliana, very much not to scale
+{ // Mole Antonelliana, very much not to scale (no collider, like trees and houses)
   const [x, z] = toXZ(7.693, 45.069), y = groundAt(x, z), m = new THREE.MeshLambertMaterial({ color: 0xd8cfc0, flatShading: true }), g = new THREE.Group();
   const base = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 3), m); base.position.y = 1.25; g.add(base);
   const dome = new THREE.Mesh(new THREE.ConeGeometry(2.1, 5, 4), m); dome.position.y = 5; dome.rotation.y = Math.PI / 4; g.add(dome);
   const spire = new THREE.Mesh(new THREE.ConeGeometry(0.35, 8, 6), m); spire.position.y = 11; g.add(spire);
   g.position.set(x, y, z); g.traverse(o => { o.castShadow = true; }); scene.add(g);
-  const shape = new CANNON.Body({ mass: 0 }); shape.addShape(new CANNON.Box(new CANNON.Vec3(1.5, 4, 1.5))); shape.position.set(x, y + 4, z); world.addBody(shape);
 }
 { // a few trees and vineyards-ish dots
   const tg = new THREE.ConeGeometry(0.9, 2.6, 6), tm = new THREE.MeshLambertMaterial({ color: 0x2f6b2f, flatShading: true });
-  const trees = new THREE.InstancedMesh(tg, tm, 1400); let n = 0; const M = new THREE.Matrix4();
+  const trees = new THREE.InstancedMesh(tg, tm, 1900); let n = 0; const M = new THREE.Matrix4();
   for (let t = 0; t < 6000 && n < 1400; t++) {
     const x = (hash(t, 7) - 0.5) * (SIZE - 70), z = (hash(t, 13) - 0.5) * (SIZE - 70), y = groundAt(x, z);
     if (y < 2.5 || y > 15 || fbm(x * 0.04, z * 0.04, 2) < 0.52) continue;
     const s = 0.7 + hash(t, 3) * 0.8; M.makeScale(s, s, s).setPosition(x, y + 1.2 * s, z); trees.setMatrixAt(n++, M);
+  }
+  for (let t = 0, k = 0; t < 4000 && k < 450; t++) { // lone trees scattered everywhere
+    const x = (hash(t, 31) - 0.5) * 430, z = (hash(t, 37) - 0.5) * 540, y = groundAt(x, z);
+    if (y < WATER_Y + 0.6 || y > 16) continue;
+    const s = 0.6 + hash(t, 41) * 0.9; M.makeScale(s, s, s).setPosition(x, y + 1.2 * s, z); trees.setMatrixAt(n++, M); k++;
   }
   trees.count = n; trees.castShadow = true; scene.add(trees);
 }
@@ -537,6 +574,11 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, 0, 0); dog.scale.setScalar(0.55); }
   } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; }
+  { // fade the border cliffs when they stand between the camera (south) and the car
+    const cx = car.position.x, cz = car.position.z; let hide = false;
+    for (const [bx, bz] of BORDER) if (bz > cz && bz - cz < 20 && Math.abs(bx - cx) < 10) { hide = true; break; }
+    const target = hide ? 0.35 : 1; borderWall.material.opacity += (target - borderWall.material.opacity) * Math.min(1, dt * 6); borderWall.material.depthWrite = borderWall.material.opacity > 0.95;
+  }
   for (const m of mixers) m.update(dt);
   updateCarpet(t);
   // HUD
