@@ -87,10 +87,11 @@ const FX = MOBILE ? 0.6 : 1; // particle budget
 const ZOOM = MOBILE ? 1.15 : 1; // 15% zoom out
 // ---------------------------------------------------------------- renderer & scene
 const canvas = document.getElementById('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, MOBILE ? 1.5 : 2));
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, MOBILE ? 1.25 : 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+if (MOBILE) renderer.shadowMap.autoUpdate = false; // phones redraw the shadows every other frame (see frame())
 const scene = new THREE.Scene();
 // Palette taken from the four models: olive greens (tree), mustard and cream (car), ochre and red (house),
 // warm greys and slate blue (dog), cyan (house windows).
@@ -314,16 +315,28 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
   exp.pos = [bx, bz];
   // the carpet comes in from the side: it runs along the foot of the mountain, then climbs across its face to the top
   const side = bx > 0 ? -1 : 1; // approach from the side that faces the middle of the board
-  const route = [START, [bx + side * 40, bz + 26], [bx + side * 30, bz + 14], [bx + side * 20, bz + 7], [bx + side * 10, bz + 2], [bx, bz]]
+  // through the valley it slaloms between the houses: it visits the hamlets that lie along the way
+  const hamlets = []; for (const h of SCENERY.houses) { const c = hamlets.find(c => c.some(q => Math.hypot(q.x - h.x, q.z - h.z) < 16)); c ? c.push(h) : hamlets.push([h]); }
+  const A = START, Bp = [bx + side * 30, bz + 14], ab = [Bp[0] - A[0], Bp[1] - A[1]], L2 = ab[0] ** 2 + ab[1] ** 2;
+  const along = (x, z) => ((x - A[0]) * ab[0] + (z - A[1]) * ab[1]) / L2, across = (x, z) => ((x - A[0]) * ab[1] - (z - A[1]) * ab[0]) / Math.sqrt(L2);
+  const visits = []; let sideSign = 1;
+  hamlets.filter(c => c.length >= 3).map(c => ({ c, x: c.reduce((s, q) => s + q.x, 0) / c.length, z: c.reduce((s, q) => s + q.z, 0) / c.length }))
+    .filter(v => along(v.x, v.z) > 0.05 && along(v.x, v.z) < 0.95 && Math.abs(across(v.x, v.z)) < 30).sort((a, b) => along(a.x, a.z) - along(b.x, b.z))
+    .forEach(v => { // inside each hamlet, pass the houses one side then the other
+      const dir = [ab[0], ab[1]].map(q => q / Math.sqrt(L2)), perp = [dir[1], -dir[0]];
+      for (const h of [...v.c].sort((a, b) => along(a.x, a.z) - along(b.x, b.z))) {
+        const d = 1.7 * h.sc + 2.8; visits.push([h.x + perp[0] * d * sideSign, h.z + perp[1] * d * sideSign]); sideSign = -sideSign;
+      }
+    });
+  const route = [START, ...visits, Bp, [bx + side * 20, bz + 7], [bx + side * 10, bz + 2], [bx, bz]]
     .map(([x, z]) => { const r = Math.hypot(x, z), m = rimAt(x, z) - 10; return r > m ? [x * m / r, z * m / r] : [x, z]; });
   route[route.length - 1] = [bx, bz];
-  // keep the carpet out of the villages: plan the valley part on a grid (A*) around the houses,
-  // then follow the side approach up the mountain
-  const CELL = 2, HALFG = 122, NG = Math.ceil(2 * HALFG / CELL), CLEAR = 8;
+  // plan on a grid (A*): close enough to the houses to thread between them, never over the lake
+  const CELL = 1.5, HALFG = 122, NG = Math.ceil(2 * HALFG / CELL), CLEAR = 2.6;
   const blocked = new Uint8Array(NG * NG), cellXZ = i => [-HALFG + (i % NG + 0.5) * CELL, -HALFG + (Math.floor(i / NG) + 0.5) * CELL];
   for (let i = 0; i < NG * NG; i++) { const [x, z] = cellXZ(i);
     if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.25) { blocked[i] = 1; continue; } // off the board, near the rim or over the lake
-    for (const hs of SCENERY.houses) if (Math.hypot(x - hs.x, z - hs.z) < CLEAR + hs.sc * 1.5) { blocked[i] = 1; break; } }
+    for (const hs of SCENERY.houses) if (Math.hypot(x - hs.x, z - hs.z) < CLEAR + hs.sc * 1.3) { blocked[i] = 1; break; } }
   const idx = (x, z) => Math.max(0, Math.min(NG - 1, Math.floor((x + HALFG) / CELL))) + Math.max(0, Math.min(NG - 1, Math.floor((z + HALFG) / CELL))) * NG;
   function astar(from, to) {
     const s0 = idx(...from), g0 = idx(...to), gs = new Float32Array(NG * NG).fill(Infinity), came = new Int32Array(NG * NG).fill(-1), heap = [];
@@ -357,8 +370,8 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
       for (let d = STEP - carry; d < L; d += STEP) even.push([a[0] + (c[0] - a[0]) * d / L, a[1] + (c[1] - a[1]) * d / L]);
       carry = (carry + L) % STEP; }
     even.push([...dense[dense.length - 1]]); dense = even;
-    const near = (x, z) => Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.2 || SCENERY.houses.some(hs => Math.hypot(x - hs.x, z - hs.z) < 5.5 + hs.sc * 1.5) || (Math.hypot(x, z) > rimAt(x, z) - 10 && Math.hypot(x - exp.pos[0], z - exp.pos[1]) > 12); // a little closer to the houses than the planner, the summit itself is outside the rim
-    for (let k = 0; k < 160; k++) for (let i = 1; i < dense.length - 1; i++) {
+    const near = (x, z) => Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.2 || SCENERY.houses.some(hs => Math.hypot(x - hs.x, z - hs.z) < 2.4 + hs.sc * 1.3) || (Math.hypot(x, z) > rimAt(x, z) - 10 && Math.hypot(x - exp.pos[0], z - exp.pos[1]) > 12); // as close to the houses as the planner, the summit itself is outside the rim
+    for (let k = 0; k < 120; k++) for (let i = 1; i < dense.length - 1; i++) { // fewer passes: keep the slalom, round off the corners
       const a = dense[i - 1], c = dense[i + 1], q = dense[i], nx = (a[0] + q[0] + c[0]) / 3, nz = (a[1] + q[1] + c[1]) / 3;
       if (!near(nx, nz)) { q[0] = nx; q[1] = nz; } }
   }
@@ -949,8 +962,10 @@ function frame() {
     const a = Math.round((base + needleJ) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 60 65)`); }
   }
   if (hudOn.map) drawMinimap(heading);
+  if (MOBILE) renderer.shadowMap.needsUpdate = (frameNo++ & 1) === 0;
   renderer.render(scene, camera);
 }
+let frameNo = 0;
 
 $('loading').style.display = 'none';
 const startEl = $('start'); startEl.style.display = 'flex';
@@ -960,4 +975,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
