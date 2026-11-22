@@ -9,6 +9,15 @@ import { GLTFLoader } from './vendor/addons/loaders/GLTFLoader.js';
 const ASSETS = {
   car: { url: 'assets/car.glb', length: 4.4, yaw: 0, hideWheels: true },
   dog: { url: 'assets/dog.glb', length: 1.3, yaw: 0 },
+  tree: { url: 'assets/tree.glb', height: 3.4 },
+  house: { url: 'assets/house.glb', length: 2.8 },
+};
+// Credits for the optional models (all CC BY 4.0, sketchfab.com); shown in the game once a model is in use
+const CREDITS = {
+  car: '“Lowpoly Offroadcar” by Pontene',
+  tree: '“Stylize Tree Lowpoly” by uday',
+  dog: '“Blue Heeler - Australian Cattle Dog” by DavidA3D',
+  house: '“House lowpoly” by rkmorello',
 };
 
 // ---------------------------------------------------------------- the board
@@ -188,6 +197,7 @@ const wheelMeshes = WHEELS.map(() => {
 });
 
 // ---------------------------------------------------------------- scenery
+const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
 // Houses stand in small solid groups; trees (in groves and loose) can be driven through.
 {
   const keepClear = [START, DOG_POS, ...CV.map(c => c.pos)];
@@ -211,11 +221,12 @@ const wheelMeshes = WHEELS.map(() => {
       Q.setFromAxisAngle(Y, rot);
       M.compose(V.set(x, y + h, z), Q, S.set(sc, h, sc)); walls.setMatrixAt(n, M); walls.setColorAt(n, C.set(wallCols[seed % 4]));
       M.compose(V.set(x, y + 2 * h + 0.75 * sc, z), Q, S.set(sc, sc, sc)); roofs.setMatrixAt(n, M); roofs.setColorAt(n, C.set(roofCols[seed % 4]));
-      solid(x, y, z, 1.2 * sc, h + 0.6, 1.2 * sc, rot);
+      solid(x, y, z, 1.2 * sc, h + 0.6, 1.2 * sc, rot); SCENERY.houses.push({ x, y, z, rot, sc });
       n++; k++;
     }
   }
   walls.count = roofs.count = n; walls.castShadow = roofs.castShadow = true; walls.receiveShadow = true; scene.add(walls, roofs);
+  SCENERY.houseMeshes = [walls, roofs];
   // groves and loose trees, no colliders
   const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(0.9, 2.6, 6), new THREE.MeshLambertMaterial({ color: 0x2f6b2f, flatShading: true }), 220);
   let t = 0;
@@ -225,16 +236,17 @@ const wheelMeshes = WHEELS.map(() => {
     for (let k = 0, tries = 0; k < 9 && tries < 40; tries++) {
       seed++; const a = hash(seed, 17) * Math.PI * 2, d = Math.sqrt(hash(seed, 19)) * 7, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = groundAt(x, z);
       if (!free(x, z, 11) || y < WATER_Y + 0.5) continue;
-      const sc = 0.9 + hash(seed, 23) * 0.6; M.makeScale(sc, sc, sc).setPosition(x, y + 1.2 * sc, z); trees.setMatrixAt(t++, M);
+      const sc = 0.9 + hash(seed, 23) * 0.6; M.makeScale(sc, sc, sc).setPosition(x, y + 1.2 * sc, z); trees.setMatrixAt(t++, M); SCENERY.trees.push({ x, y, z, sc, rot: hash(seed, 41) * 6.28 });
       k++;
     }
   }
   for (let k = 0, tries = 0; k < 45 && tries < 2000; tries++) {
     seed++; const x = (hash(seed, 29) - 0.5) * 2 * R_EDGE, z = (hash(seed, 31) - 0.5) * 2 * R_EDGE, y = groundAt(x, z);
     if (!free(x, z, 6) || y < WATER_Y + 0.5 || y > 12) continue;
-    const sc = 0.7 + hash(seed, 37) * 0.6; M.makeScale(sc, sc, sc).setPosition(x, y + 1.2 * sc, z); trees.setMatrixAt(t++, M); k++;
+    const sc = 0.7 + hash(seed, 37) * 0.6; M.makeScale(sc, sc, sc).setPosition(x, y + 1.2 * sc, z); trees.setMatrixAt(t++, M); SCENERY.trees.push({ x, y, z, sc, rot: hash(seed, 43) * 6.28 }); k++;
   }
   trees.count = t; trees.castShadow = true; scene.add(trees);
+  SCENERY.treeMesh = trees;
 }
 
 // ---------------------------------------------------------------- pickups
@@ -290,14 +302,32 @@ function swapIn(group, gltf, cfg, yOffset, keep = []) {
   if (gltf.animations?.length) { const m = new THREE.AnimationMixer(gltf.scene); m.clipAction(gltf.animations[0]).play(); mixers.push(m); }
 }
 const gltfLoader = new GLTFLoader();
-gltfLoader.load(ASSETS.car.url, g => { swapIn(car, g, ASSETS.car, ASSETS.car.hideWheels ? -1.27 : -0.65, [car.userData.seat]); if (ASSETS.car.hideWheels) wheelMeshes.forEach(w => (w.visible = false)); }, undefined, () => {});
-gltfLoader.load(ASSETS.dog.url, g => { swapIn(dog, g, ASSETS.dog, 0); dog.userData.custom = true; }, undefined, () => {});
+gltfLoader.load(ASSETS.car.url, g => { swapIn(car, g, ASSETS.car, ASSETS.car.hideWheels ? -1.27 : -0.65, [car.userData.seat]); if (ASSETS.car.hideWheels) wheelMeshes.forEach(w => (w.visible = false)); usedCredits.add('car'); }, undefined, () => {});
+gltfLoader.load(ASSETS.dog.url, g => { swapIn(dog, g, ASSETS.dog, 0); dog.userData.custom = true; usedCredits.add('dog'); }, undefined, () => {});
+function fitHeight(root, height) { // scale a model to a given height, feet on the ground, centred
+  root.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(root), size = b.getSize(new THREE.Vector3());
+  root.scale.multiplyScalar(height / Math.max(size.y, 1e-6)); root.updateMatrixWorld(true);
+  const b2 = new THREE.Box3().setFromObject(root), c = b2.getCenter(new THREE.Vector3()); root.position.sub(new THREE.Vector3(c.x, b2.min.y, c.z));
+  root.traverse(o => { if (o.isMesh) o.castShadow = true; }); return root;
+}
+gltfLoader.load(ASSETS.tree.url, g => {
+  const proto = fitHeight(g.scene, ASSETS.tree.height);
+  for (const t of SCENERY.trees) { const h = new THREE.Group(); h.add(proto.clone(true)); h.position.set(t.x, t.y, t.z); h.rotation.y = t.rot; h.scale.setScalar(t.sc); scene.add(h); }
+  SCENERY.treeMesh.visible = false; usedCredits.add('tree');
+}, undefined, () => {});
+gltfLoader.load(ASSETS.house.url, g => {
+  const proto = fitModel(g.scene, ASSETS.house.length, 0);
+  for (const t of SCENERY.houses) { const h = new THREE.Group(); h.add(proto.clone(true)); h.position.set(t.x, t.y, t.z); h.rotation.y = t.rot; h.scale.setScalar(t.sc); scene.add(h); }
+  SCENERY.houseMeshes.forEach(m => (m.visible = false)); usedCredits.add('house');
+}, undefined, () => {});
+const usedCredits = new Set();
+const creditsHtml = () => usedCredits.size ? `<p style="font-size:11px;opacity:.7;margin-top:12px">3D models (CC BY 4.0, Sketchfab): ${[...usedCredits].map(k => CREDITS[k]).join(' · ')}</p>` : '';
 
 let dogState = 'waiting', dogJumpT = 0; const dogJumpFrom = new THREE.Vector3();
 
 // ---------------------------------------------------------------- AR carpet
-const CHEVRONS = 18;
-const chevGeo = (() => { const s = new THREE.Shape(); s.moveTo(-1.1, -0.5); s.lineTo(0, 0.4); s.lineTo(1.1, -0.5); s.lineTo(1.1, 0.0); s.lineTo(0, 0.9); s.lineTo(-1.1, 0.0); s.closePath(); const g = new THREE.ShapeGeometry(s); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI); return g; })();
+const CHEVRONS = 46;
+const chevGeo = (() => { const s = new THREE.Shape(); s.moveTo(-1.1, -0.5); s.lineTo(0, 0.4); s.lineTo(1.1, -0.5); s.lineTo(1.1, 0.0); s.lineTo(0, 0.9); s.lineTo(-1.1, 0.0); s.closePath(); const g = new THREE.ShapeGeometry(s); g.scale(0.75, 0.75, 0.75); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI); return g; })();
 const chevMat = new THREE.MeshBasicMaterial({ color: 0x39d3ff, transparent: true, opacity: 0.85, depthWrite: false, fog: false });
 const chevrons = Array.from({ length: CHEVRONS }, () => { const m = new THREE.Mesh(chevGeo, chevMat.clone()); m.visible = false; scene.add(m); return m; });
 let carpetOn = false;
@@ -322,7 +352,7 @@ function updateCarpet(t) {
     const x = ax + (bx - ax) * along / L, z = az + (bz - az) * along / L, c = chevrons[k];
     c.visible = true; c.position.set(x, groundAt(x, z) + 0.35, z); c.rotation.y = Math.atan2(bx - ax, bz - az);
     c.material.opacity = 0.35 + 0.5 * (0.5 + 0.5 * Math.sin(t * 6 - k * 0.6));
-    along += 4.5; k++;
+    along += 1.9; k++;
   }
   for (; k < CHEVRONS; k++) chevrons[k].visible = false;
 }
@@ -357,7 +387,7 @@ const mmBase = (() => { // pre-render the minimap terrain
   const x0 = -122, x1 = 122, z0 = -122, z1 = 122;
   for (let py = 0; py < 190; py++) for (let px = 0; px < 150; px++) {
     const x = x0 + (x1 - x0) * px / 149, z = z0 + (z1 - z0) * py / 189, y = groundAt(x, z), o = (px + py * 150) * 4;
-    if (y <= OUTSIDE_Y + 0.01) continue;
+    if (!inside(x, z) || Math.hypot(x, z) > edgeR(Math.atan2(z, x)) - 2) continue;
     const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 2.2 ? [150, 190, 95] : y < 6 ? [95, 145, 60] : y < 15 ? [140, 130, 120] : [240, 240, 240];
     img.data.set([r, gg, b, 200], o);
   }
@@ -375,18 +405,19 @@ function collect(p) {
   chassisBody.velocity.set(0, Math.min(0, chassisBody.velocity.y), 0); chassisBody.angularVelocity.setZero();
   p.got = true; p.group.visible = false;
   const slot = $('slot-' + p.id); slot.classList.add('got'); slot.textContent = p.title;
-  if (p.id === 'edu') { hudOn.speed = true; $('speed').style.display = 'block'; }
-  if (p.id === 'proj') { hudOn.alt = true; $('alt').style.display = 'block'; }
-  if (p.id === 'pub') { hudOn.map = true; $('minimap').style.display = 'block'; }
-  const firstThree = pickups.slice(0, 3).every(q => q.got);
-  let extra = '';
-  if (p.id !== 'exp' && firstThree && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; $('slot-exp').textContent = 'Experience'; extra = '<p><b>AR navigation unlocked.</b> Follow the carpet to the last piece, on the highest summit of the ring.</p>'; }
+  const n = pickups.slice(0, 3).filter(q => q.got).length; // how many of the first three you have
+  let unlock = p.unlock, extra = '';
+  if (p.id !== 'exp') {
+    if (n === 1) { hudOn.speed = hudOn.alt = true; $('speed').style.display = 'block'; $('alt').style.display = 'block'; unlock = 'Speedometer, altimeter & compass unlocked'; }
+    if (n === 2) { hudOn.map = true; $('minimap').style.display = 'block'; unlock = 'Minimap unlocked'; }
+    if (n === 3 && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; $('slot-exp').textContent = 'Experience'; unlock = 'AR navigation unlocked'; extra = '<p><b>Follow the AR carpet</b> to the last piece, on the highest summit of the ring.</p>'; }
+  }
   if (p.id === 'exp') {
     carpetOn = false; chevrons.forEach(c => (c.visible = false));
-    openCard(`<h2>${p.title}</h2><div class="unlock">${p.unlock} · ${p.where}</div>${p.html}<p><b>You built the whole HUD.</b> The full CV is yours.</p><div class="btns"><a class="btn" href="${PDF_URL}" target="_blank" rel="noopener">Open the full CV (PDF)</a><button class="ghost" data-close>Keep driving</button></div>`);
+    openCard(`<h2>${p.title}</h2><div class="unlock">${p.unlock} · ${p.where}</div>${p.html}<p><b>You built the whole HUD.</b> The full CV is yours.</p><div class="btns"><a class="btn" href="${PDF_URL}" target="_blank" rel="noopener">Open the full CV (PDF)</a><button class="ghost" data-close>Keep driving</button></div>${creditsHtml()}`);
     return;
   }
-  openCard(`<h2>${p.title}</h2><div class="unlock">${p.unlock} · found in ${p.where}</div>${p.html}${extra}<div class="btns"><button data-close>Keep driving (Enter)</button></div>`);
+  openCard(`<h2>${p.title}</h2><div class="unlock">${unlock} · found in ${p.where}</div>${p.html}${extra}<div class="btns"><button data-close>Keep driving (Enter)</button></div>`);
 }
 
 // ---------------------------------------------------------------- loop
