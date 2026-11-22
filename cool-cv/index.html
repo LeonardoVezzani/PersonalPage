@@ -39,6 +39,18 @@
   #frags path[id^="arc"] { stroke: var(--border); transition: stroke .3s; }
   #frags path.got { stroke: var(--red); }
   #docIcon { stroke: var(--fg); }
+  /* achievement banner, top right: a round badge that opens into a pill */
+  #ach { right: 10px; top: 10px; display: flex; align-items: center; min-height: 52px; max-width: 52px; border-radius: 26px; overflow: hidden; background: #2b2f33; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.35); opacity: 0; transform: scale(.4); transition: transform .35s cubic-bezier(.3,1.7,.5,1), opacity .2s, max-width .5s cubic-bezier(.2,.9,.3,1.1) .3s; }
+  #ach.show { opacity: 1; transform: none; max-width: min(520px, calc(100% - 190px)); } /* never under the minimap */
+  #ach .badge { flex: 0 0 44px; align-self: flex-start; height: 44px; margin: 4px; border-radius: 50%; background: #cf222e; display: flex; align-items: center; justify-content: center; }
+  #ach .badge svg { width: 26px; height: 26px; }
+  #ach .txt { padding: 6px 20px 6px 6px; min-width: 240px; line-height: 1.3; }
+  #ach small { display: block; font-size: 10px; color: #c9d1d9; }
+  #ach span { font-size: 12.5px; font-weight: 700; }
+  /* HUD items enter with a stretch and a bounce */
+  .pop { animation: stretchBounce .75s cubic-bezier(.25,1.4,.5,1) both; }
+  @keyframes stretchBounce { 0% { transform: scale(.15, 1.7); opacity: 0; } 35% { transform: scale(1.22, .78); opacity: 1; } 55% { transform: scale(.9, 1.12); } 75% { transform: scale(1.05, .96); } 100% { transform: none; } }
+  #minimap.pop { transform-origin: top left; } #speed.pop { transform-origin: bottom right; }
   #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; }
 </style>
 <script>try { const t = new URLSearchParams(location.search).get('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
@@ -50,6 +62,7 @@
 <canvas id="minimap" class="hud chip" width="150" height="190"></canvas>
 <div id="speed" class="hud chip"></div>
 <div id="toast" class="hud chip"></div>
+<div id="ach" class="hud"><div class="badge"><svg viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round"><path d="M 30 18 H 60 L 72 30 V 82 H 30 Z"/><path d="M 40 46 H 62 M 40 58 H 62 M 40 70 H 54" stroke-linecap="round"/></svg></div><div class="txt"><small id="achTop"></small><span id="achMsg"></span></div></div>
 <!-- CV fragments: a document with four quarter circles around it, one per fragment -->
 <div id="frags" class="hud chip">
   <svg viewBox="0 0 100 100" aria-label="CV fragments found">

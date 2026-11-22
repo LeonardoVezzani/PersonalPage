@@ -798,6 +798,12 @@
         panel.classList.add('hidden'); frame.removeAttribute('src');
         sections().forEach(s => { s.classList.remove('hidden'); s.style.opacity = ''; s.style.transition = ''; });
       }
+      function revealSections(id) { // a CV page picked up in the game: its sections fade in below
+        sections().filter(s => s.dataset.frag === id && s.classList.contains('hidden')).forEach(s => {
+          s.style.opacity = '0'; s.classList.remove('hidden'); s.style.transition = 'opacity .8s ease-out';
+          requestAnimationFrame(() => requestAnimationFrame(() => { s.style.opacity = '1'; }));
+        });
+      }
       function showFragment(msg) {
         current = msg;
         head.textContent = `Fragment ${msg.n} / 4 found · ${msg.unlock}`;
@@ -828,6 +834,7 @@
       window.addEventListener('message', e => {
         if (e.origin !== location.origin || !e.data || typeof e.data !== 'object') return;
         if (e.data.type === 'coolcv:fragment') showFragment(e.data);
+        if (e.data.type === 'coolcv:reveal') revealSections(e.data.id);
         if (e.data.type === 'coolcv:close-card') closeFragment();
       });
       document.getElementById('cool-cv-btn').addEventListener('click', openGame);

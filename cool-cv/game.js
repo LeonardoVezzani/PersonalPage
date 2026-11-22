@@ -452,7 +452,7 @@ chevMat.onBeforeCompile = sh => {
 };
 const chevrons = new THREE.InstancedMesh(chevGeo, chevMat, CHEVRONS); chevrons.count = 0; chevrons.frustumCulled = false; scene.add(chevrons);
 const chevM = new THREE.Matrix4(), chevQ = new THREE.Quaternion(), chevP = new THREE.Vector3(), chevS = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
-let carpetOn = false;
+let carpetOn = false, carpetT0 = 0;
 let carpetSeg = 0; // the route segment the car has reached; the carpet only moves forward along the spiral
 function carpetPath(px, pz) {
   const route = CARPET_ROUTE; let best = 1e9, bi = 0, bp = null;
@@ -476,6 +476,7 @@ function updateCarpet(t) {
     const [ax, az] = seg === 0 ? [sx, sz] : pts[seg], [bx, bz] = pts[seg + 1], L = Math.hypot(bx - ax, bz - az);
     if (along > L) { along -= L; seg++; continue; }
     const x = ax + (bx - ax) * along / L, z = az + (bz - az) * along / L;
+    chevS.setScalar(Math.max(0, bounce(Math.max(0, (t - carpetT0 - k * 0.05) / 0.5)))); // pop in one after the other
     chevrons.setMatrixAt(k, chevM.compose(chevP.set(x, groundAt(x, z) + 0.35, z), chevQ.setFromAxisAngle(UP, Math.atan2(bx - ax, bz - az)), chevS));
     chevAlpha.array[k] = 0.35 + 0.5 * (0.5 + 0.5 * Math.sin(t * 6 - k * 0.6));
     along += 1.9; k++;
@@ -526,7 +527,18 @@ const walkers = [];
     }
   });
 }
-function showBoxes(on) { for (const w of walkers) w.g.children.forEach(c => { if (c.userData.isBox) c.visible = on; }); }
+const boxes = []; for (const w of walkers) w.g.children.forEach(c => { if (c.userData.isBox) { c.userData.base = c.scale.clone(); boxes.push(c); } });
+function showBoxes(at) { for (const b of boxes) b.userData.popAt = at + Math.random() * 1.8; } // each box pops in with its own delay
+const bounce = k => k >= 1 ? 1 : 1 - Math.exp(-6 * k) * Math.cos(11 * k); // 0 → overshoot → settles at 1
+function updateBoxes(t) {
+  for (const b of boxes) {
+    const at = b.userData.popAt; if (at === undefined || t < at) continue;
+    if (!b.visible) { b.visible = true; bubblePop(); }
+    const k = (t - at) / 0.6, B = b.userData.base, g = bounce(k), w = k >= 1 ? 0 : Math.exp(-5 * k) * Math.sin(14 * k) * 0.35; // grow, then stretch and squash
+    b.scale.set(B.x * g * (1 - w * 0.6), B.y * g * (1 + w), B.z * g * (1 - w * 0.6));
+    if (k >= 1) { b.scale.copy(B); delete b.userData.popAt; }
+  }
+}
 let hitToastT = 0;
 function updateWalkers(dt, t) {
   const cp = chassisBody.position; hitToastT -= dt;
@@ -591,9 +603,30 @@ function updateParticles(dt) {
   if (alive || partsWasAlive) parts.instanceMatrix.needsUpdate = true; partsWasAlive = alive;
 }
 
+function burst(x, y, z, n = 46) { // the little red explosion when a CV page is picked up
+  const cols = [0xcf222e, 0xff5a5f, 0xff8a8a, 0xffffff];
+  for (let k = 0; k < n; k++) {
+    const q = pState[pNext], a = Math.random() * Math.PI * 2, sp = 3 + Math.random() * 6;
+    Object.assign(q, { life: 0.7 + Math.random() * 0.6, x, y: y + 3, z, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 5 + Math.random() * 8, s: 0.6 + Math.random() * 0.6 });
+    parts.setColorAt(pNext, tmpC.set(cols[k % cols.length])); pNext = (pNext + 1) % PARTS;
+  }
+  parts.instanceColor.needsUpdate = true;
+}
 // ---------------------------------------------------------------- horn (or bark) and confetti
 const SFX = { honk: new Audio('assets/sfx/honk.mp3'), bark: new Audio('assets/sfx/bark.mp3'), sheep: new Audio('assets/sfx/sheep.mp3'), person: new Audio('assets/sfx/person.mp3'), fanfare: new Audio('assets/sfx/fanfare.mp3') };
 Object.values(SFX).forEach(a => { a.preload = 'auto'; });
+let actx = null; // small synthesised sounds: the notification chime and the bubble pops
+function tone(f0, f1, dur, gain, type = 'sine', when = 0) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime + when, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+  } catch (e) {}
+}
+const chime = () => { tone(784, 784, 0.22, 0.16, 'triangle'); tone(1175, 1175, 0.45, 0.16, 'triangle', 0.14); }; // pum-pim
+const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 700, 0.06, 0.09);
 function play(name, volume = 0.8) { try { const a = SFX[name].cloneNode(); a.volume = volume; a.play().catch(() => {}); } catch (e) {} }
 const shouts = []; // comic "!" lines
 const shoutMats = { car: new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }), dog: new THREE.MeshBasicMaterial({ color: 0xff8a1f, depthTest: false }) }; // white for the horn, orange for the dog
@@ -683,6 +716,12 @@ const $ = id => document.getElementById(id);
 function updateFrags() { const got = pickups.filter(q => q.got).length; for (let i = 0; i < 4; i++) $('arc' + i).classList.toggle('got', i < got); $('fragCount').textContent = `${got} / 4`; }
 let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 2600); }
 let cardOpen = false;
+let achTimer; function achievement(top, msg) { // Xbox-style banner, top right
+  const a = $('ach'); $('achTop').textContent = top; $('achMsg').textContent = msg;
+  a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
+  clearTimeout(achTimer); achTimer = setTimeout(() => a.classList.remove('show'), 5200);
+}
+const popIn = el => { el.style.display = 'block'; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }; // stretch-and-bounce entrance
 function openCard(html) { releaseKeys(); $('cardBox').innerHTML = html; $('card').style.display = 'flex'; cardOpen = true; }
 function closeCard() {
   if (EMBEDDED) { window.parent.postMessage({ type: 'coolcv:close-card' }, location.origin); return; } // the page answers with coolcv:resume
@@ -717,24 +756,26 @@ function drawMinimap(heading) {
   mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#ff3b30'; mm.beginPath(); mm.moveTo(0, -6); mm.lineTo(4, 4); mm.lineTo(-4, 4); mm.closePath(); mm.fill(); mm.restore();
 }
 
+const SECTION_NAMES = { edu: 'Education and Languages', proj: 'Projects and Skills', pub: 'Publications' };
+const UNLOCKS = ['Minimap', 'Obstacle detection', 'AR navigation']; // what the 1st, 2nd and 3rd page unlock
 function collect(p) {
-  chassisBody.velocity.set(0, Math.min(0, chassisBody.velocity.y), 0); chassisBody.angularVelocity.setZero(); cardOpen = true;
-  p.got = true; p.group.visible = false;
-  updateFrags();
-  const n = pickups.slice(0, 3).filter(q => q.got).length; // how many of the first three you have
-  let unlock = '', extra = '';
-  if (p.id !== 'exp') {
-    if (n === 1) { hudOn.speed = true; $('speed').style.display = 'block'; unlock = 'Speedometer unlocked'; }
-    if (n === 2) { hudOn.map = true; $('minimap').style.display = 'block'; showBoxes(true); unlock = 'Minimap & obstacle detection unlocked'; extra = '<p>People and animals are now framed in red: steer clear of them.</p>'; }
-    if (n === 3 && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; unlock = 'AR navigation unlocked'; extra = '<p><b>Follow the AR carpet</b> to the last piece, on the highest summit of the ring.</p>'; }
-  }
-  if (p.id === 'exp') {
+  p.got = true; p.group.visible = false; updateFrags();
+  burst(p.group.position.x, p.group.position.y, p.group.position.z); chime();
+  if (p.id === 'exp') { // the last page: confetti, then the closing card
+    chassisBody.velocity.set(0, 0, 0); cardOpen = true;
     carpetOn = false; chevrons.count = 0;
     confetti();
     setTimeout(() => showFragment(p, 'HUD complete: the whole CV is yours', `<p><a class="btn" href="${PDF_URL}" target="_blank" rel="noopener">Open the full CV (PDF)</a></p>${creditsHtml()}`), 1400);
     return;
   }
-  showFragment(p, unlock, extra);
+  const n = pickups.slice(0, 3).filter(q => q.got).length; // 1st, 2nd or 3rd page, whatever the order
+  achievement(`Fragment ${n} / 4 · ${UNLOCKS[n - 1]} unlocked`, `${SECTION_NAMES[p.id]} added to the CV${EMBEDDED ? '. Scroll down to read them' : ''}`);
+  if (EMBEDDED) window.parent.postMessage({ type: 'coolcv:reveal', id: p.id }, location.origin); // the page shows those sections
+  setTimeout(() => {
+    if (n === 1) { hudOn.speed = hudOn.map = true; popIn($('minimap')); popIn(speedEl); }
+    if (n === 2) showBoxes(clock.elapsedTime);
+    if (n === 3) { carpetOn = true; carpetT0 = clock.elapsedTime; pickups[3].group.visible = true; toast('Follow the AR carpet to the highest summit'); }
+  }, 2500);
 }
 
 // ---------------------------------------------------------------- loop
@@ -819,7 +860,7 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
+  updateBoxes(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
