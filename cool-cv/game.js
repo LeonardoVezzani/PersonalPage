@@ -447,7 +447,7 @@ chevMat.onBeforeCompile = sh => {
 };
 const chevrons = new THREE.InstancedMesh(chevGeo, chevMat, CHEVRONS); chevrons.count = 0; chevrons.frustumCulled = false; scene.add(chevrons);
 const chevM = new THREE.Matrix4(), chevQ = new THREE.Quaternion(), chevP = new THREE.Vector3(), chevS = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
-let carpetOn = false, carpetT0 = 0, carpetPending = false;
+let carpetOn = false, carpetT0 = 0;
 let carpetSeg = 0; // the route segment the car has reached; the carpet only moves forward along the spiral
 function carpetPath(px, pz) {
   const route = CARPET_ROUTE; let best = 1e9, bi = 0, bp = null;
@@ -464,7 +464,6 @@ function carpetPath(px, pz) {
   return pts;
 }
 function updateCarpet(t) {
-  if (carpetPending && chassisBody.velocity.length() > 1) { carpetPending = false; carpetOn = true; carpetT0 = t; pickups[3].group.visible = true; toast('Follow the AR carpet to the highest summit'); }
   if (!carpetOn) return;
   const p = chassisBody.position, pts = carpetPath(p.x, p.z);
   let seg = 0, along = 3, k = 0, sx = pts[0][0], sz = pts[0][1];
@@ -709,9 +708,32 @@ window.addEventListener('keydown', e => {
   if (first && (e.code === 'KeyH' || e.code === 'Space')) honk();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
-const releaseKeys = () => { for (const k in keys) keys[k] = false; }; // a key released while the page had the focus never reaches us
+const releaseKeys = () => { for (const k in keys) keys[k] = false; touchHeld = false; }; // a key released while the page had the focus never reaches us
 window.addEventListener('blur', releaseKeys); document.addEventListener('visibilitychange', releaseKeys);
 const fwd = () => keys.ArrowUp, back = () => keys.ArrowDown, left = () => keys.ArrowLeft, right = () => keys.ArrowRight;
+// touch (and mouse): press outside the crawler to drive there, tap the crawler to honk
+const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+let touchGoal = null, touchHeld = false;
+const tRay = new THREE.Raycaster(), tPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), tHit = new THREE.Vector3(), tNdc = new THREE.Vector2(), tCar = new THREE.Vector3();
+function groundUnder(cx, cy) {
+  const r = canvas.getBoundingClientRect(); tNdc.set((cx - r.left) / r.width * 2 - 1, 1 - (cy - r.top) / r.height * 2);
+  tRay.setFromCamera(tNdc, camera); tPlane.constant = -car.position.y; return tRay.ray.intersectPlane(tPlane, tHit) ? [tHit.x, tHit.z] : null;
+}
+function onCrawler(cx, cy) {
+  const r = canvas.getBoundingClientRect(); tCar.copy(car.position).project(camera);
+  return Math.hypot(cx - (r.left + (tCar.x + 1) / 2 * r.width), cy - (r.top + (1 - tCar.y) / 2 * r.height)) < Math.max(30, r.width * 0.08);
+}
+canvas.addEventListener('pointerdown', e => {
+  if (!started) return; e.preventDefault(); canvas.focus();
+  if (onCrawler(e.clientX, e.clientY)) { honk(); return; }
+  touchHeld = true; touchGoal = groundUnder(e.clientX, e.clientY); try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+});
+canvas.addEventListener('pointermove', e => { if (touchHeld) touchGoal = groundUnder(e.clientX, e.clientY) || touchGoal; });
+for (const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, () => { touchHeld = false; });
+if (TOUCH) { // the start panel explains the touch controls
+  document.querySelector('#start table').innerHTML = '<tr><td class="keys">Tap / hold</td><td>drive towards that point</td></tr><tr><td class="keys">Tap the crawler</td><td>horn: people and sheep run off</td></tr>';
+  document.getElementById('startBtn').textContent = 'Start';
+}
 function toggleMode() {
   driveMode = driveMode === 'map' ? 'car' : 'map';
   toast(driveMode === 'map' ? 'Simplified controls: arrows point the crawler' : 'Car controls: ↑ gas, ↓ reverse, ← → steer');
@@ -725,7 +747,7 @@ let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg;
 let achTimer; function achievement(top, msg) { // Xbox-style banner, top right
   const a = $('ach'); $('achTop').textContent = top; $('achMsg').textContent = msg;
   a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
-  clearTimeout(achTimer); achTimer = setTimeout(() => a.classList.remove('show'), 5200);
+  clearTimeout(achTimer); achTimer = setTimeout(() => a.classList.remove('show'), ACH_SECS * 1000);
 }
 const popIn = el => { el.style.display = 'block'; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }; // stretch-and-bounce entrance
 const hudOn = { speed: false, map: false };
@@ -767,11 +789,28 @@ function collect(p) {
     }, 3000);
     return;
   }
-  setTimeout(() => {
-    if (n === 1) { hudOn.speed = hudOn.map = true; popIn($('minimap')); popIn(speedEl); }
-    if (n === 2) showBoxes(clock.elapsedTime);
-    if (n === 3) carpetPending = true; // the carpet waits until the crawler moves
-  }, 2500);
+  pendingUnlock = { n, at: clock.elapsedTime + ACH_SECS }; // it arrives once the banner has gone and the crawler is moving
+}
+const ACH_SECS = 4.2, NEW_NAMES = ['Map and speedometer', 'Pedestrian highlight', 'Directions'];
+let pendingUnlock = null;
+function updateUnlocks(t) {
+  if (!pendingUnlock || t < pendingUnlock.at || chassisBody.velocity.length() < 1) return;
+  const n = pendingUnlock.n; pendingUnlock = null;
+  if (n === 1) { hudOn.speed = hudOn.map = true; popIn($('minimap')); popIn(speedEl); }
+  if (n === 2) showBoxes(t);
+  if (n === 3) { carpetOn = true; carpetT0 = t; pickups[3].group.visible = true; }
+  newAddition(NEW_NAMES[n - 1]);
+}
+let newTimer, newShown = false; // the blue bubble above the crawler: "New addition!" and what just arrived
+function newAddition(name) {
+  const el = $('newAdd'); $('newName').textContent = name; newShown = true; popIn(el);
+  clearTimeout(newTimer); newTimer = setTimeout(() => { el.style.display = 'none'; newShown = false; }, 3800);
+}
+const nAbove = new THREE.Vector3();
+function placeNewAddition() {
+  if (!newShown) return;
+  nAbove.copy(car.position); nAbove.y += 4.2; nAbove.project(camera);
+  const el = $('newAdd'); el.style.left = ((nAbove.x + 1) / 2 * 100) + '%'; el.style.top = ((1 - nAbove.y) / 2 * 100) + '%';
 }
 function closeGame() {
   if (!EMBEDDED) { location.href = '../'; return; }
@@ -818,9 +857,14 @@ let carYaw = Math.PI; // facing north
 function control(h) {
   const live = started;
   let speed = 0, yawRate = 0;
-  const throttle = live && (driveMode === 'map' ? (left() || right() || fwd() || back()) : fwd());
+  if (touchGoal && Math.hypot(touchGoal[0] - chassisBody.position.x, touchGoal[1] - chassisBody.position.z) < 2.5 && !touchHeld) touchGoal = null; // arrived
+  const throttle = live && (touchGoal || (driveMode === 'map' ? (left() || right() || fwd() || back()) : fwd()));
   holdT = throttle ? holdT + h : 0;
-  if (live && driveMode === 'map') {
+  if (live && touchGoal) { // touch: head for the point under the finger (or the last one tapped)
+    let err = Math.atan2(touchGoal[0] - chassisBody.position.x, touchGoal[1] - chassisBody.position.z) - carYaw; while (err > Math.PI) err -= 2 * Math.PI; while (err < -Math.PI) err += 2 * Math.PI;
+    yawRate = Math.max(-4, Math.min(4, err * 6));
+    speed = Math.abs(err) < 0.35 ? rampSpeed() : Math.abs(err) < 1.2 ? VMAX * 0.4 : VMAX * 0.15; // keep rolling while it turns
+  } else if (live && driveMode === 'map') {
     const ix = (right() ? 1 : 0) - (left() ? 1 : 0), iz = (back() ? 1 : 0) - (fwd() ? 1 : 0);
     if (ix || iz) {
       let err = Math.atan2(ix, iz) - carYaw; while (err > Math.PI) err -= 2 * Math.PI; while (err < -Math.PI) err += 2 * Math.PI;
@@ -886,7 +930,7 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
+  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
@@ -908,4 +952,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };

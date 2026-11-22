@@ -57,6 +57,8 @@
     })();
   </script>
   <style>
+    /* Cool CV on phones: a portrait crop of the game, so the HUD sits above and below the crawler */
+    @media (max-width: 640px) { #cool-cv-stage { width: min(100%, calc(80vh * 9 / 16)) !important; aspect-ratio: 9 / 16 !important; } }
     /* Prevent flash of unstyled content */
     html {
       background-color: #ffffff;
@@ -778,7 +780,7 @@
       function openGame() {
         sections().forEach(s => { s.classList.add('hidden'); s.style.opacity = ''; });
         panel.classList.remove('hidden');
-        frame.src = 'cool-cv/index.html?v=20&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        frame.src = 'cool-cv/index.html?v=22&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => frame.focus(), 400);
       }
