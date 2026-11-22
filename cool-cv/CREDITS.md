@@ -11,4 +11,4 @@ Code: Leonardo Vezzani. Libraries: three.js (MIT), cannon-es (MIT), in `vendor/`
 
 License: https://creativecommons.org/licenses/by/4.0/
 
-Sound effects in `assets/sfx/`: car horn (`honk.mp3`) and dog bark (`bark.mp3`) by Dragon Studio.
+Sound effects in `assets/sfx/`: car horn (`honk.mp3`) and dog bark (`bark.mp3`) by Dragon Studio; sheep (`sheep.mp3`) by stu9; cartoon voice (`person.mp3`) from the Freesound community.
