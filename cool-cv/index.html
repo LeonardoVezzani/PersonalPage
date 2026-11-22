@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cool CV — Leonardo Vezzani</title>
+<style>
+  /* Same look as the CV page: GitHub-like colours, JetBrains Mono, light and dark themes */
+  :root { --bg: #ffffff; --subtle: #f6f8fa; --border: #d0d7de; --fg: #24292f; --muted: #57606a; --accent: #0969da; --red: #cf222e; --hud: #24292f; }
+  :root[data-theme="dark"] { --bg: #22272e; --subtle: #2d333b; --border: #444c56; --fg: #e6edf3; --muted: #9198a1; --accent: #539bf5; --red: #f47067; --hud: #e6edf3; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #2e2c2d; font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; color: var(--fg); }
+  canvas#game { display: block; width: 100%; height: 100%; outline: none; }
+  .hud { position: absolute; pointer-events: none; }
+  .chip { background: var(--bg); border: 2px solid var(--border); border-radius: 6px; color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  #frags { left: 10px; bottom: 10px; width: 84px; padding: 4px 4px 2px; }
+  #frags svg { width: 76px; height: 76px; display: block; margin: 0 auto; }
+  #fragCount { text-align: center; font-size: 10px; color: var(--muted); }
+  #speed { right: 10px; bottom: 10px; font-size: 24px; font-weight: 700; display: none; text-align: right; padding: 4px 10px; }
+  #speed small { display: block; font-size: 10px; font-weight: 400; color: var(--muted); }
+  #alt { right: 10px; top: 10px; font-size: 12px; display: none; text-align: right; line-height: 1.5; padding: 4px 10px; }
+  #minimap { left: 10px; top: 10px; width: 150px; height: 190px; display: none; }
+  #toast { left: 50%; top: 18%; transform: translateX(-50%); font-size: 13px; font-weight: 700; padding: 7px 12px; opacity: 0; transition: opacity .3s; white-space: nowrap; }
+  #card, #start { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.3); }
+  .panel { width: min(540px, 88vw); max-height: 82vh; overflow: auto; background: var(--bg); border: 2px solid var(--border); border-radius: 6px; padding: 16px 18px; font-size: 12.5px; line-height: 1.55; color: var(--fg); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+  .panel h2 { margin: 0 0 4px; font-size: 16px; color: var(--fg); }
+  .panel .unlock { font-size: 11px; color: var(--accent); margin-bottom: 10px; }
+  .panel ul { margin: 6px 0; padding-left: 18px; }
+  .panel li { margin: 3px 0; }
+  .panel .btns { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .panel button, .panel a.btn { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 6px; border: 2px solid var(--border); background: var(--bg); color: var(--fg); cursor: pointer; text-decoration: none; }
+  .panel button:hover, .panel a.btn:hover { border-color: var(--accent); }
+  .panel .primary { border-color: var(--accent); color: var(--accent); }
+  .panel kbd { font: inherit; font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--subtle); }
+  .panel table { border-collapse: collapse; margin: 8px 0; }
+  .panel td { padding: 3px 10px 3px 0; vertical-align: top; }
+  .panel .muted { color: var(--muted); }
+  #frags path[id^="arc"] { stroke: var(--border); transition: stroke .3s; }
+  #frags path.got { stroke: var(--red); }
+  #docIcon { stroke: var(--fg); }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; }
+</style>
+<script>try { const t = new URLSearchParams(location.search).get('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<canvas id="game" tabindex="0"></canvas>
+<div id="loading">Building the valley…</div>
+
+<canvas id="minimap" class="hud chip" width="150" height="190"></canvas>
+<div id="alt" class="hud chip"></div>
+<div id="speed" class="hud chip"></div>
+<div id="toast" class="hud chip"></div>
+<!-- CV fragments: a document with four quarter circles around it, one per fragment -->
+<div id="frags" class="hud chip">
+  <svg viewBox="0 0 100 100" aria-label="CV fragments found">
+    <path id="arc0" d="M 50 8 A 42 42 0 0 1 92 50" fill="none" stroke-width="7" stroke-linecap="round"/>
+    <path id="arc1" d="M 92 50 A 42 42 0 0 1 50 92" fill="none" stroke-width="7" stroke-linecap="round"/>
+    <path id="arc2" d="M 50 92 A 42 42 0 0 1 8 50" fill="none" stroke-width="7" stroke-linecap="round"/>
+    <path id="arc3" d="M 8 50 A 42 42 0 0 1 50 8" fill="none" stroke-width="7" stroke-linecap="round"/>
+    <g id="docIcon" fill="none" stroke-width="4" stroke-linejoin="round">
+      <path d="M 36 26 H 57 L 66 35 V 74 H 36 Z"/><path d="M 57 26 V 35 H 66"/>
+      <path d="M 43 46 H 59 M 43 54 H 59 M 43 62 H 53" stroke-linecap="round"/>
+    </g>
+  </svg>
+  <div id="fragCount">0 / 4</div>
+</div>
+
+<div id="card"><div class="panel" id="cardBox"></div></div>
+
+<div id="start">
+  <div class="panel">
+    <h2>Find Leonardo's CV fragments</h2>
+    <p class="muted">Four fragments of my CV are hidden around the valley. Each one adds a piece to your HUD; the last one is waiting on the highest summit.</p>
+    <table>
+      <tr><td><kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> or <kbd>WASD</kbd></td><td>point the crawler and go</td></tr>
+      <tr><td><kbd>C</kbd></td><td>switch to car controls: <kbd>↑</kbd> gas, <kbd>↓</kbd> reverse, <kbd>←</kbd> <kbd>→</kbd> steer</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>close a fragment card</td></tr>
+    </table>
+    <p class="muted">Mind the people and the animals. Someone out there wants a ride.</p>
+    <div class="btns"><button class="primary" id="startBtn">Start (any key)</button></div>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
