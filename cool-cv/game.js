@@ -160,7 +160,7 @@ function toonify(root) { // swap a model's PBR materials for toon ones with the 
     o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material); o.castShadow = true; });
   return root;
 }
-let VIEW = 26; // half height of the view, in world units
+let VIEW = 19.5; // half height of the view, in world units
 const camera = new THREE.OrthographicCamera(-VIEW, VIEW, VIEW, -VIEW, -200, 600);
 const CAM_OFFSET = new THREE.Vector3(0, 1, 0.9).normalize().multiplyScalar(160); // from the south, looking down ~48°
 scene.add(new THREE.HemisphereLight(0xfff6e0, 0x6c6f2a, 1.0));
@@ -284,9 +284,9 @@ const carAxles = [];
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), m(0xe9c9a6)); head.position.y = 0.78; d.add(head);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 10), m(0xcf222e)); cap.position.y = 0.95; d.add(cap);
   d.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  d.position.set(0.32, 0.05, 0.15); car.add(d); car.userData.driver = d;
+  d.position.set(0.32, 0.36, 0.15); car.add(d); car.userData.driver = d;
 }
-car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, 0.2, -1.1); car.add(car.userData.seat); // the back of the crawler
+car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, -0.32, -1.1); car.add(car.userData.seat); // the back of the crawler
 const wheelMeshes = WHEELS.map(() => {
   const g = new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 1.0 * SIZE_K, 12); g.rotateZ(Math.PI / 2);
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0x1d1d1d, flatShading: true })); m.castShadow = true; scene.add(m); return m;
@@ -458,7 +458,7 @@ function swapIn(group, gltf, cfg, yOffset, keep = []) {
 }
 const gltfLoader = new GLTFLoader();
 gltfLoader.load(ASSETS.car.url, g => {
-  g.scene.traverse(o => { if (/^tire_/.test(o.name)) carAxles.push(o); }); // the two axles of the model spin
+  g.scene.traverse(o => { if (/^tire_/.test(o.name)) carAxles.push(o); }); /* the two axles spin about their own centre */
   swapIn(car, g, ASSETS.car, ASSETS.car.hideWheels ? -1.27 : -0.65, [car.userData.seat, car.userData.driver]); if (ASSETS.car.hideWheels) wheelMeshes.forEach(w => (w.visible = false)); usedCredits.add('car'); }, undefined, () => {});
 gltfLoader.load(ASSETS.dog.url, g => { swapIn(dog, g, ASSETS.dog, 0); dog.userData.custom = true; usedCredits.add('dog'); }, undefined, () => {});
 function fitHeight(root, height) { // scale a model to a given height, feet on the ground, centred
