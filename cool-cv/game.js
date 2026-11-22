@@ -261,7 +261,7 @@ const car = new THREE.Group(); car.scale.setScalar(CAR_SCALE); scene.add(car);
   for (const x of [-0.6, 0.6]) add(new THREE.BoxGeometry(0.35, 0.22, 0.06), mat(0xfff3b0), x, 0.35, 2.12); // lights
   add(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10), mat(0x222222), 0, 0.45, -2.2).rotation.x = Math.PI / 2; // spare wheel
 }
-car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, 1.35, -0.6); car.add(car.userData.seat);
+car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, 0.45, -1.25); car.add(car.userData.seat); // the back of the crawler
 const wheelMeshes = WHEELS.map(() => {
   const g = new THREE.CylinderGeometry(1.24, 1.24, 1.0, 12); g.rotateZ(Math.PI / 2);
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0x1d1d1d, flatShading: true })); m.castShadow = true; scene.add(m); return m;
@@ -486,7 +486,8 @@ function updateWalkers(dt, t) {
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
     if (dc < 3.6) { w.knocked = 1.8; if (hitToastT <= 0) { toast(w.kind === 'sheep' ? 'Baa! Mind the sheep' : 'Hey! Watch where you drive'); hitToastT = 3; } chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
-    if (dc < 11) { // step aside when the crawler gets close
+    if (w.scared > 0) { w.scared -= dt; speed *= 3; }
+    else if (dc < 11) { // step aside when the crawler gets close
       const ax = p.x - cp.x, az = p.z - cp.z, l = Math.hypot(ax, az) || 1; w.target = [p.x + ax / l * 8, p.z + az / l * 8]; speed *= 2.2; w.wait = 0;
     } else if (w.wait > 0) { w.wait -= dt; continue; }
     const dx = w.target[0] - p.x, dz = w.target[1] - p.z, d = Math.hypot(dx, dz);
@@ -537,12 +538,90 @@ function updateParticles(dt) {
   parts.instanceMatrix.needsUpdate = true;
 }
 
+// ---------------------------------------------------------------- horn (or bark) and confetti
+let audioCtx = null;
+function beep(freqs, dur, type, gain) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const g = audioCtx.createGain(); g.gain.setValueAtTime(gain, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur); g.connect(audioCtx.destination);
+    for (const f of freqs) { const o = audioCtx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, audioCtx.currentTime); if (type === 'sawtooth') o.frequency.exponentialRampToValueAtTime(f * 0.6, audioCtx.currentTime + dur); o.connect(g); o.start(); o.stop(audioCtx.currentTime + dur); }
+  } catch (e) {}
+}
+const shouts = []; // comic "!" lines
+const shoutMat = new THREE.MeshBasicMaterial({ color: 0x24292f, depthTest: false });
+function shout(origin, dir) {
+  const g = new THREE.Group(); g.position.copy(origin); g.renderOrder = 20;
+  const yaw = Math.atan2(dir.x, dir.z);
+  for (const a of [-0.55, 0, 0.55]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 1.6), shoutMat); bar.renderOrder = 20;
+    const holder = new THREE.Group(); holder.rotation.set(-0.5, yaw + a, 0); bar.position.z = 2.2; holder.add(bar); g.add(holder);
+  }
+  scene.add(g); shouts.push({ g, t: 0 });
+}
+function honk() {
+  const fwdDir = new THREE.Vector3(Math.sin(carYaw), 0, Math.cos(carYaw));
+  if (dogState === 'aboard') { // the dog barks instead, and the lines come from the dog
+    beep([520], 0.12, 'sawtooth', 0.25); setTimeout(() => beep([480], 0.14, 'sawtooth', 0.25), 170);
+    shout(dog.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.6, 0)), fwdDir); toast('Woof! Woof!');
+  } else {
+    beep([392, 494], 0.45, 'square', 0.12);
+    shout(car.position.clone().addScaledVector(fwdDir, 4.6).add(new THREE.Vector3(0, 1.2, 0)), fwdDir); toast('Beep beep!');
+  }
+  for (const w of walkers) { // everyone nearby runs off
+    const p = w.g.position, d = Math.hypot(p.x - chassisBody.position.x, p.z - chassisBody.position.z);
+    if (d < 30) { w.scared = 3; const ax = p.x - chassisBody.position.x, az = p.z - chassisBody.position.z, l = d || 1; w.target = [p.x + ax / l * 14, p.z + az / l * 14]; w.wait = 0; }
+  }
+}
+function updateShouts(dt) {
+  for (let i = shouts.length - 1; i >= 0; i--) {
+    const s = shouts[i]; s.t += dt; const k = s.t / 0.7;
+    s.g.children.forEach(h => { const bar = h.children[0]; bar.position.z = 2 + k * 2.2; bar.scale.setScalar(1 - k * 0.6); });
+    s.g.visible = Math.floor(s.t * 14) % 2 === 0 || k < 0.4;
+    if (k >= 1) { scene.remove(s.g); shouts.splice(i, 1); }
+  }
+}
+// confetti for the last fragment
+const CONF = 260, conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.7, 0.45), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), CONF);
+conf.instanceMatrix.setUsage(THREE.DynamicDrawUsage); conf.frustumCulled = false; scene.add(conf);
+const cState = Array.from({ length: CONF }, () => ({ life: 0 }));
+{ const m = new THREE.Matrix4().makeScale(0, 0, 0), c = new THREE.Color(); for (let i = 0; i < CONF; i++) { conf.setMatrixAt(i, m); conf.setColorAt(i, c.set(0xffffff)); } }
+function confetti() {
+  const cols = [0xcf222e, PAL.wall, PAL.ar, PAL.grass, PAL.snow, 0x566c8d, PAL.roof], c = new THREE.Color();
+  cState.forEach((q, i) => {
+    const a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 9;
+    Object.assign(q, { life: 2.5 + Math.random() * 1.5, x: car.position.x, y: car.position.y + 3, z: car.position.z, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 14 + Math.random() * 12, rx: Math.random() * 6, ry: Math.random() * 6, wr: 4 + Math.random() * 8 });
+    conf.setColorAt(i, c.set(cols[i % cols.length]));
+  });
+  conf.instanceColor.needsUpdate = true;
+  beep([523, 659, 784], 0.6, 'triangle', 0.15);
+}
+const cM = new THREE.Matrix4(), cQ = new THREE.Quaternion(), cE = new THREE.Euler(), cS = new THREE.Vector3(1, 1, 1), cP = new THREE.Vector3();
+function updateConfetti(dt) {
+  let any = false;
+  for (let i = 0; i < CONF; i++) {
+    const q = cState[i]; if (q.life <= 0) continue; any = true;
+    q.life -= dt; q.vy -= 9 * dt; q.vx *= 0.99; q.vz *= 0.99; if (q.vy < -4) q.vy = -4; // flutter down slowly
+    q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.rx += q.wr * dt; q.ry += q.wr * 0.7 * dt;
+    cQ.setFromEuler(cE.set(q.rx, q.ry, 0)); cS.setScalar(q.life > 0 ? Math.min(1, q.life) : 0);
+    conf.setMatrixAt(i, cM.compose(cP.set(q.x, Math.max(q.y, groundAt(q.x, q.z) + 0.1), q.z), cQ, cS));
+  }
+  if (any) conf.instanceMatrix.needsUpdate = true;
+}
+
 // ---------------------------------------------------------------- input
 const keys = {};
-const GAME_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyR', 'KeyC'];
-window.addEventListener('keydown', e => { if (GAME_KEYS.includes(e.code)) e.preventDefault(); if (!keys[e.code] && e.code === 'KeyC') toggleMode(); keys[e.code] = true; if (cardOpen && (e.code === 'Enter' || e.code === 'Escape')) closeCard(); });
+const EMBEDDED = new URLSearchParams(location.search).has('embedded') && window.parent !== window; // inside the CV page
+const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyC', 'KeyH', 'Enter'];
+window.addEventListener('keydown', e => {
+  if (GAME_KEYS.includes(e.code)) e.preventDefault();
+  const first = !keys[e.code]; keys[e.code] = true;
+  if (cardOpen) { if (first && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) closeCard(); return; }
+  if (!started) return;
+  if (first && e.code === 'KeyC') toggleMode();
+  if (first && (e.code === 'KeyH' || e.code === 'Space')) honk();
+});
 window.addEventListener('keyup', e => { keys[e.code] = false; });
-const fwd = () => keys.KeyW || keys.ArrowUp, back = () => keys.KeyS || keys.ArrowDown, left = () => keys.KeyA || keys.ArrowLeft, right = () => keys.KeyD || keys.ArrowRight;
+const fwd = () => keys.ArrowUp, back = () => keys.ArrowDown, left = () => keys.ArrowLeft, right = () => keys.ArrowRight;
 function toggleMode() {
   driveMode = driveMode === 'map' ? 'car' : 'map';
   toast(driveMode === 'map' ? 'Map controls: arrows point the car' : 'Car controls: up = gas, left/right = steer');
@@ -556,7 +635,16 @@ function updateFrags() { const got = pickups.filter(q => q.got).length; for (let
 let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 2600); }
 let cardOpen = false;
 function openCard(html) { $('cardBox').innerHTML = html; $('card').style.display = 'flex'; cardOpen = true; }
-function closeCard() { $('card').style.display = 'none'; cardOpen = false; canvas.focus(); }
+function closeCard() {
+  if (EMBEDDED) { window.parent.postMessage({ type: 'coolcv:close-card' }, location.origin); return; } // the page answers with coolcv:resume
+  $('card').style.display = 'none'; cardOpen = false; canvas.focus();
+}
+window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.type === 'coolcv:resume') { cardOpen = false; canvas.focus(); } });
+function showFragment(p, unlock, extraHtml) {
+  const n = pickups.filter(q => q.got).length;
+  if (EMBEDDED) { cardOpen = true; window.parent.postMessage({ type: 'coolcv:fragment', id: p.id, title: p.title, unlock, n, last: p.id === 'exp' }, location.origin); return; }
+  openCard(`<h2>${p.title}</h2><div class="unlock">Fragment ${n} / 4 · ${unlock}</div>${p.html}${extraHtml}<div class="btns"><button data-close>Continue (Enter / Space)</button></div>`);
+}
 $('card').addEventListener('click', e => { if (e.target.id === 'card' || e.target.dataset.close !== undefined) closeCard(); });
 const hudOn = { speed: false, alt: false, map: false };
 const mm = $('minimap').getContext('2d');
@@ -575,12 +663,13 @@ function drawMinimap(heading) {
   const { c, x0, x1, z0, z1 } = mmBase; mm.clearRect(0, 0, 150, 190); mm.drawImage(c, 0, 0);
   const toM = (x, z) => [(x - x0) / (x1 - x0) * 149, (z - z0) / (z1 - z0) * 189];
   for (const p of pickups) { if (p.got || !p.group.visible) continue; const [mx, my] = toM(...p.pos); mm.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); mm.fillRect(mx - 3, my - 3, 6, 6); }
+  if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.font = '13px sans-serif'; mm.textAlign = 'center'; mm.textBaseline = 'middle'; mm.fillText('🐕', dx, dy); }
   const [cx, cy] = toM(chassisBody.position.x, chassisBody.position.z);
   mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#ff3b30'; mm.beginPath(); mm.moveTo(0, -6); mm.lineTo(4, 4); mm.lineTo(-4, 4); mm.closePath(); mm.fill(); mm.restore();
 }
 
 function collect(p) {
-  chassisBody.velocity.set(0, Math.min(0, chassisBody.velocity.y), 0); chassisBody.angularVelocity.setZero();
+  chassisBody.velocity.set(0, Math.min(0, chassisBody.velocity.y), 0); chassisBody.angularVelocity.setZero(); cardOpen = true;
   p.got = true; p.group.visible = false;
   updateFrags();
   const n = pickups.slice(0, 3).filter(q => q.got).length; // how many of the first three you have
@@ -592,10 +681,11 @@ function collect(p) {
   }
   if (p.id === 'exp') {
     carpetOn = false; chevrons.forEach(c => (c.visible = false));
-    openCard(`<h2>${p.title}</h2><div class="unlock">${p.unlock} · ${p.where}</div>${p.html}<p><b>You built the whole HUD.</b> The full CV is yours.</p><div class="btns"><a class="btn" href="${PDF_URL}" target="_blank" rel="noopener">Open the full CV (PDF)</a><button class="ghost" data-close>Keep driving</button></div>${creditsHtml()}`);
+    confetti();
+    setTimeout(() => showFragment(p, 'HUD complete: the whole CV is yours', `<p><a class="btn" href="${PDF_URL}" target="_blank" rel="noopener">Open the full CV (PDF)</a></p>${creditsHtml()}`), 1400);
     return;
   }
-  openCard(`<h2>${p.title}</h2><div class="unlock">${unlock} · found in ${p.where}</div>${p.html}${extra}<div class="btns"><button data-close>Keep driving (Enter)</button></div>`);
+  showFragment(p, unlock, extra);
 }
 
 // ---------------------------------------------------------------- loop
@@ -676,14 +766,14 @@ function frame() {
   } else if (dogState === 'jumping') {
     dogJumpT += dt / 0.7; const to = car.userData.seat.getWorldPosition(new THREE.Vector3());
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
-    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, 0, 0); dog.scale.setScalar(2.2 / CAR_SCALE); } // same size as on the ground
-  } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; }
+    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(-0.35, 0, 0); dog.scale.setScalar(2.2 / CAR_SCALE); } // same size as on the ground, sitting up, facing forward
+  } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; dog.rotation.y = Math.sin(t * 0.7) * 0.25; }
   { // fade the border cliffs when they stand between the camera (south) and the car
     const cx = car.position.x, cz = car.position.z; let hide = false;
     for (const [bx, bz] of BORDER) if (bz > cz && bz - cz < 20 && Math.abs(bx - cx) < 10) { hide = true; break; }
     const target = hide ? 0.35 : 1; borderWall.material.opacity += (target - borderWall.material.opacity) * Math.min(1, dt * 6); borderWall.material.depthWrite = borderWall.material.opacity > 0.95;
   }
-  updateWalkers(dt, t); updateParticles(dt);
+  updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
   for (const m of mixers) m.update(dt);
   updateCarpet(t);
   // HUD
@@ -703,4 +793,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, world, chassisBody, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, world, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
