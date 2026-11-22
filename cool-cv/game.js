@@ -81,6 +81,9 @@ const CV = [
 ];
 const CARPET_ROUTE = [];
 const DOG_POS = polar(150, 34); // somewhere in the valley
+const DOG_WAIT_K = 1.3; // the waiting dog is 30% bigger
+const dogRing = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange disc under the waiting dog
+dogRing.renderOrder = 2;
 const PDF_URL = '../CV_Vezzani_Printable.pdf';
 
 // ---------------------------------------------------------------- renderer & scene
@@ -284,7 +287,7 @@ const carAxles = [];
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), m(0xe9c9a6)); head.position.y = 0.78; d.add(head);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 10), m(0xcf222e)); cap.position.y = 0.95; d.add(cap);
   d.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  d.position.set(0.32, 0.2, 0.15); car.add(d); car.userData.driver = d;
+  d.position.set(0.32, 0.1, 0.15); car.add(d); car.userData.driver = d;
 }
 car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, -0.32, -1.1); car.add(car.userData.seat); // the back of the crawler
 const wheelMeshes = WHEELS.map(() => {
@@ -432,8 +435,9 @@ const dog = new THREE.Group();
   dog.userData.tail = add(new THREE.BoxGeometry(0.1, 0.1, 0.5), fur, 0, 0.95, -0.7);
   dog.userData.head = head;
   dog.position.set(DOG_POS[0], groundAt(...DOG_POS), DOG_POS[1]);
-  dog.scale.setScalar(3.3 * SIZE_K);
+  dog.scale.setScalar(3.3 * SIZE_K * DOG_WAIT_K); // bigger while waiting, so it is easy to spot
   scene.add(dog);
+  dogRing.position.set(DOG_POS[0], groundAt(...DOG_POS) + 0.08, DOG_POS[1]); scene.add(dogRing);
 }
 // ---------------------------------------------------------------- optional glTF models
 const mixers = [];
@@ -631,8 +635,8 @@ function beep(freqs, dur, type, gain) {
   } catch (e) {}
 }
 const shouts = []; // comic "!" lines
-const shoutMat = new THREE.MeshBasicMaterial({ color: 0x24292f, depthTest: false });
-function shout(origin, dir) {
+const shoutMats = { car: new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }), dog: new THREE.MeshBasicMaterial({ color: 0xff8a1f, depthTest: false }) }; // white for the horn, orange for the dog
+function shout(origin, dir, who = 'car') { const shoutMat = shoutMats[who];
   const g = new THREE.Group(); g.position.copy(origin); g.renderOrder = 20;
   const yaw = Math.atan2(dir.x, dir.z);
   for (const a of [-0.55, 0, 0.55]) {
@@ -645,7 +649,7 @@ function honk() {
   const fwdDir = new THREE.Vector3(Math.sin(carYaw), 0, Math.cos(carYaw));
   if (dogState === 'aboard') { // the dog barks instead, and the lines come from the dog
     play('bark');
-    shout(dog.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.6, 0)), fwdDir); toast('Woof! Woof!');
+    shout(dog.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.6, 0)), fwdDir, 'dog'); toast('Woof! Woof!');
   } else {
     play('honk', 0.6);
     shout(car.position.clone().addScaledVector(fwdDir, 4.6 * SIZE_K).add(new THREE.Vector3(0, 1.2 * SIZE_K, 0)), fwdDir); toast('Beep beep!');
@@ -848,10 +852,10 @@ function frame() {
   const dDog = Math.hypot(car.position.x - DOG_POS[0], car.position.z - DOG_POS[1]);
   if (dogState === 'waiting') {
     dog.userData.tail.rotation.y = Math.sin(t * 10) * 0.6; dog.lookAt(car.position.x, dog.position.y, car.position.z);
-    if (dDog < 10 && chassisBody.velocity.length() < 8) { dogState = 'jumping'; dogJumpT = 0; dogJumpFrom.copy(dog.position); toast('Your co-pilot just jumped aboard!'); }
+    if (dDog < 10 && chassisBody.velocity.length() < 8) { dogState = 'jumping'; dogJumpT = 0; dogJumpFrom.copy(dog.position); dogRing.visible = false; toast('Your co-pilot just jumped aboard!'); }
   } else if (dogState === 'jumping') {
     dogJumpT += dt / 0.7; const to = car.userData.seat.getWorldPosition(new THREE.Vector3());
-    dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
+    dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
   { // fade the border cliffs when they stand between the camera (south) and the car
