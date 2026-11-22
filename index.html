@@ -254,13 +254,6 @@
       </div>
       <div id="cool-cv-stage" class="relative mx-auto rounded-md overflow-hidden border-2 border-github-border-default dark:border-github-border-dark bg-black" style="width:min(100%, 78vh); aspect-ratio:1 / 1">
         <iframe id="cool-cv-frame" title="Cool CV" class="absolute inset-0 w-full h-full border-0" allow="fullscreen"></iframe>
-        <div id="cool-cv-card" class="absolute inset-0 hidden items-center justify-center p-3 md:p-5" style="background:rgba(0,0,0,.35)">
-          <div id="cool-cv-card-box" class="w-full max-h-full overflow-auto bg-white dark:bg-github-canvas-dark rounded-md border-2 border-github-border-default dark:border-github-border-dark p-4 shadow-xl">
-            <div id="cool-cv-card-head" class="mb-3 text-xs font-mono text-github-accent-emphasis dark:text-github-accent-dark"></div>
-            <div id="cool-cv-card-body"></div>
-            <button type="button" id="cool-cv-card-ok" class="mt-1 px-3 py-1.5 text-sm font-medium rounded-md border-2 border-github-accent-emphasis dark:border-github-accent-dark text-github-accent-emphasis dark:text-github-accent-dark bg-white dark:bg-github-canvas-dark-subtle">Add it to the CV ↓ <span class="font-mono text-xs">(Enter / Space)</span></button>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -778,14 +771,10 @@
   </script>
 
   <script>
-    // Cool CV: the game runs in the iframe and tells the page when a fragment is found (postMessage).
+    // Cool CV: the game runs in the iframe and tells the page when a CV page is found (postMessage).
     (function () {
       const panel = document.getElementById('cool-cv-panel'), frame = document.getElementById('cool-cv-frame');
-      const card = document.getElementById('cool-cv-card'), box = document.getElementById('cool-cv-card-box');
-      const head = document.getElementById('cool-cv-card-head'), body = document.getElementById('cool-cv-card-body');
       const sections = () => [...document.querySelectorAll('[data-frag]')];
-      let current = null; // the fragment shown in the card
-      const send = msg => { try { frame.contentWindow.postMessage(msg, location.origin); } catch (e) {} };
       function openGame() {
         sections().forEach(s => { s.classList.add('hidden'); s.style.opacity = ''; });
         panel.classList.remove('hidden');
@@ -794,57 +783,23 @@
         setTimeout(() => frame.focus(), 400);
       }
       function closeGame() { // always back to the whole CV, whatever the state of the game
-        card.classList.add('hidden'); card.classList.remove('flex'); current = null;
         panel.classList.add('hidden'); frame.removeAttribute('src');
         sections().forEach(s => { s.classList.remove('hidden'); s.style.opacity = ''; s.style.transition = ''; });
       }
-      function revealSections(id) { // a CV page picked up in the game: its sections fade in below
-        sections().filter(s => s.dataset.frag === id && s.classList.contains('hidden')).forEach(s => {
+      function revealSections(ids) { // a CV page picked up in the game: its sections fade in below
+        sections().filter(s => ids.includes(s.dataset.frag) && s.classList.contains('hidden')).forEach(s => {
           s.style.opacity = '0'; s.classList.remove('hidden'); s.style.transition = 'opacity .8s ease-out';
           requestAnimationFrame(() => requestAnimationFrame(() => { s.style.opacity = '1'; }));
         });
       }
-      function showFragment(msg) {
-        current = msg;
-        head.textContent = `Fragment ${msg.n} / 4 found · ${msg.unlock}`;
-        body.innerHTML = '';
-        sections().filter(s => s.dataset.frag === msg.id).forEach(s => { const c = s.cloneNode(true); c.removeAttribute('data-frag'); c.classList.remove('hidden'); c.style.opacity = ''; body.appendChild(c); });
-        card.classList.remove('hidden'); card.classList.add('flex'); box.scrollTop = 0;
-        document.getElementById('cool-cv-card-ok').focus({ preventScroll: true });
-      }
-      function closeFragment() { // the card flies down into the page, where its sections appear
-        if (!current) return;
-        const msg = current; current = null;
-        const targets = sections().filter(s => s.dataset.frag === msg.id || (msg.last && s.dataset.frag === 'end'));
-        targets.forEach(s => { s.classList.remove('hidden'); s.style.opacity = '0'; });
-        const from = box.getBoundingClientRect(), to = targets[0].getBoundingClientRect();
-        const ghost = box.cloneNode(true); ghost.removeAttribute('id');
-        Object.assign(ghost.style, { position: 'fixed', left: from.left + 'px', top: from.top + 'px', width: from.width + 'px', height: from.height + 'px', margin: 0, zIndex: 60, transformOrigin: 'top left', transition: 'transform .75s cubic-bezier(.5,0,.75,0), opacity .75s ease-in', pointerEvents: 'none' });
-        document.body.appendChild(ghost);
-        card.classList.add('hidden'); card.classList.remove('flex');
-        const k = Math.min(1, to.width / from.width);
-        requestAnimationFrame(() => requestAnimationFrame(() => { ghost.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${k})`; ghost.style.opacity = '0.15'; }));
-        setTimeout(() => {
-          ghost.remove();
-          targets.forEach(s => { s.style.transition = 'opacity .5s ease-out'; s.style.opacity = '1'; });
-          if (msg.last) { closeGame(); targets[0] && document.querySelector('[data-frag]').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-          else { send({ type: 'coolcv:resume' }); frame.focus(); }
-        }, 780);
-      }
       window.addEventListener('message', e => {
         if (e.origin !== location.origin || !e.data || typeof e.data !== 'object') return;
-        if (e.data.type === 'coolcv:fragment') showFragment(e.data);
-        if (e.data.type === 'coolcv:reveal') revealSections(e.data.id);
-        if (e.data.type === 'coolcv:close-card') closeFragment();
+        if (e.data.type === 'coolcv:reveal') revealSections(e.data.last ? [e.data.id, 'end'] : [e.data.id]);
+        if (e.data.type === 'coolcv:close') { closeGame(); document.querySelector('[data-frag]').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       });
       document.getElementById('cool-cv-btn').addEventListener('click', openGame);
       document.getElementById('cool-cv-close').addEventListener('click', closeGame);
-      document.getElementById('cool-cv-card-ok').addEventListener('click', closeFragment);
-      document.addEventListener('keydown', e => {
-        if (panel.classList.contains('hidden')) return;
-        if (current && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); closeFragment(); }
-        else if (e.key === 'Escape') closeGame();
-      });
+      document.addEventListener('keydown', e => { if (!panel.classList.contains('hidden') && e.key === 'Escape') closeGame(); });
     })();
   </script>
 </body>
