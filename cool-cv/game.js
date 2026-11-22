@@ -734,7 +734,7 @@ const mmBase = (() => { // pre-render the minimap terrain
   for (let py = 0; py < 190; py++) for (let px = 0; px < 150; px++) {
     const x = x0 + (x1 - x0) * px / 149, z = z0 + (z1 - z0) * py / 189, y = groundAt(x, z), o = (px + py * 150) * 4;
     if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 2) continue;
-    const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 2.2 ? [150, 190, 95] : y < 6 ? [95, 145, 60] : y < 15.5 ? [140, 130, 120] : [244, 248, 253];
+    const [r, gg, b] = y < WATER_Y ? [63, 182, 200] : y < 2.2 ? [164, 162, 76] : y < 6 ? [133, 138, 51] : y < 8.5 ? [108, 111, 42] : y < 15.5 ? [110, 107, 103] : [243, 248, 253]; // the terrain's own colours
     img.data.set([r, gg, b, 245], o);
   }
   g.putImageData(img, 0, 0); return { c, x0, x1, z0, z1 };
@@ -745,7 +745,7 @@ function drawMinimap(heading) {
   for (const p of pickups) { if (p.got || !p.group.visible) continue; const [mx, my] = toM(...p.pos); mm.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); mm.fillRect(mx - 3, my - 3, 6, 6); }
   if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.font = '13px sans-serif'; mm.textAlign = 'center'; mm.textBaseline = 'middle'; mm.fillText('🐕', dx, dy); }
   const [cx, cy] = toM(chassisBody.position.x, chassisBody.position.z);
-  mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#ff3b30'; mm.beginPath(); mm.moveTo(0, -6); mm.lineTo(4, 4); mm.lineTo(-4, 4); mm.closePath(); mm.fill(); mm.restore();
+  mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#e7c76f'; mm.strokeStyle = '#3a2a24'; mm.lineWidth = 1.5; mm.beginPath(); mm.moveTo(0, -7); mm.lineTo(5, 5); mm.lineTo(-5, 5); mm.closePath(); mm.fill(); mm.stroke(); mm.restore(); // the crawler, mustard like the car
 }
 
 const SECTION_NAMES = { edu: 'Education and Languages', proj: 'Projects and Skills', pub: 'Publications', exp: 'Work Experience and Interests' };
@@ -771,7 +771,13 @@ function collect(p) {
     if (n === 3) { carpetOn = true; carpetT0 = clock.elapsedTime; pickups[3].group.visible = true; toast('Follow the AR carpet to the highest summit'); }
   }, 2500);
 }
-$('finaleClose').addEventListener('click', () => { if (EMBEDDED) window.parent.postMessage({ type: 'coolcv:close' }, location.origin); else location.href = '../'; });
+function closeGame() {
+  if (!EMBEDDED) { location.href = '../'; return; }
+  try { if (window.parent.coolCvClose) { window.parent.coolCvClose(); return; } } catch (e) {}
+  window.parent.postMessage({ type: 'coolcv:close' }, location.origin);
+  setTimeout(() => { try { window.parent.location.reload(); } catch (e) {} }, 800); // still here? the page did not answer: reload it
+}
+$('finaleClose').addEventListener('click', closeGame);
 
 // the trophy: rises from the summit and floats in the air
 const trophy = new THREE.Group(); trophy.visible = false; scene.add(trophy);
@@ -799,9 +805,9 @@ camLook.set(START[0], groundAt(...START), START[1]);
 
 // Driving is arcade: on the ground the controller sets the car's speed and turn rate directly,
 // so speed is the same in every direction and on every slope. Wheels only do the suspension.
-const VMAX = 16 * 1.35, VBACK = 8 * 1.35; // 'fast'; slow is half of it, super fast twice
+const VMAX = 16 * 1.35, VBACK = 8 * 1.35; // 'fast'; slow is half of it, super fast 1.5 times
 let holdT = 0; // how long the throttle has been held
-const rampSpeed = () => VMAX * (holdT < 2 ? 0.5 + 0.5 * holdT / 2 : 1 + Math.min(1, (holdT - 2) / 4));
+const rampSpeed = () => VMAX * (holdT < 2 ? 0.5 + 0.5 * holdT / 2 : 1 + 0.5 * Math.min(1, (holdT - 2) / 4));
 let driveMode = 'car'; // 'car' (default): up = throttle, left/right = steer · 'map': simplified, arrows point the car on screen
 // The crawler: it always sits on its four wheels. Input sets a heading and a ground speed; the body's height,
 // pitch and roll come from the terrain under the wheels. Physics only stops it at houses and the border cliffs.
@@ -882,10 +888,10 @@ function frame() {
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
   if (hudOn.speed) { // needle: 0 → slow → fast → super fast, shaking with the bumps of the ground and a little at random
-    const r = chassisBody.velocity.length() / VMAX, base = r <= 0.5 ? -90 + r / 0.5 * 30 : r <= 1 ? -60 + (r - 0.5) / 0.5 * 60 : Math.min(2, r) * 60 - 60;
+    const r = chassisBody.velocity.length() / VMAX, base = r <= 0.5 ? -90 + r / 0.5 * 30 : r <= 1 ? -60 + (r - 0.5) / 0.5 * 60 : (Math.min(1.5, r) - 1) / 0.5 * 60;
     const bump = Math.min(14, Math.abs(car.position.y - lastCarY) / Math.max(dt, 1e-3) * 2.5); lastCarY = car.position.y;
     needleJ += ((Math.random() - 0.5) * (r > 0.1 ? 10 : 1) + (Math.random() < 0.5 ? -bump : bump) - needleJ) * Math.min(1, dt * 12);
-    const a = Math.round((base + needleJ) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 60 62)`); }
+    const a = Math.round((base + needleJ) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 60 65)`); }
   }
   if (hudOn.map) drawMinimap(heading);
   renderer.render(scene, camera);
