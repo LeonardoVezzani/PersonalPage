@@ -430,7 +430,7 @@ function instance(model, places, CHUNK = 50) { // one InstancedMesh per map chun
 gltfLoader.load(ASSETS.tree.url, g => { instance(fitHeight(g.scene, ASSETS.tree.height), SCENERY.trees); usedCredits.add('tree'); }, undefined, () => {});
 gltfLoader.load(ASSETS.house.url, g => { instance(fitModel(g.scene, ASSETS.house.length, 0), SCENERY.houses); usedCredits.add('house'); }, undefined, () => {});
 const usedCredits = new Set();
-const creditsHtml = () => usedCredits.size ? `<p style="font-size:11px;opacity:.7;margin-top:12px">3D models (CC BY 4.0, Sketchfab): ${[...usedCredits].map(k => CREDITS[k]).join(' · ')}</p>` : '';
+const creditsHtml = () => `<p>3D models (CC BY 4.0, Sketchfab):</p><ul>${[...usedCredits].map(k => `<li>${CREDITS[k]}</li>`).join('')}</ul><p>Libraries: three.js, cannon-es (MIT)</p>`;
 
 let dogSide = 1, dogTurnT = 4;
 let dogState = 'waiting', dogJumpT = 0; const dogJumpFrom = new THREE.Vector3();
@@ -447,7 +447,7 @@ chevMat.onBeforeCompile = sh => {
 };
 const chevrons = new THREE.InstancedMesh(chevGeo, chevMat, CHEVRONS); chevrons.count = 0; chevrons.frustumCulled = false; scene.add(chevrons);
 const chevM = new THREE.Matrix4(), chevQ = new THREE.Quaternion(), chevP = new THREE.Vector3(), chevS = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
-let carpetOn = false, carpetT0 = 0;
+let carpetOn = false, carpetT0 = 0, carpetPending = false;
 let carpetSeg = 0; // the route segment the car has reached; the carpet only moves forward along the spiral
 function carpetPath(px, pz) {
   const route = CARPET_ROUTE; let best = 1e9, bi = 0, bp = null;
@@ -464,6 +464,7 @@ function carpetPath(px, pz) {
   return pts;
 }
 function updateCarpet(t) {
+  if (carpetPending && chassisBody.velocity.length() > 1) { carpetPending = false; carpetOn = true; carpetT0 = t; pickups[3].group.visible = true; toast('Follow the AR carpet to the highest summit'); }
   if (!carpetOn) return;
   const p = chassisBody.position, pts = carpetPath(p.x, p.z);
   let seg = 0, along = 3, k = 0, sx = pts[0][0], sz = pts[0][1];
@@ -533,13 +534,13 @@ const walkers = [];
 const boxes = []; for (const w of walkers) w.g.children.forEach(c => { if (c.userData.isBox) { c.userData.base = c.scale.clone(); boxes.push(c); } });
 function showBoxes(at) { // the boxes pop in one by one, from the nearest figure to the farthest
   const cp = chassisBody.position, d = b => Math.hypot(b.parent.position.x - cp.x, b.parent.position.z - cp.z);
-  [...boxes].sort((a, b) => d(a) - d(b)).forEach((b, i) => { b.userData.popAt = at + i * 0.07; });
+  [...boxes].sort((a, b) => d(a) - d(b)).forEach((b, i) => { b.userData.popAt = at + i * 0.07; b.userData.sound = i < 7; }); // only the 7 nearest make a sound
 }
 const bounce = k => k >= 1 ? 1 : 1 - Math.exp(-6 * k) * Math.cos(11 * k); // 0 → overshoot → settles at 1
 function updateBoxes(t) {
   for (const b of boxes) {
     const at = b.userData.popAt; if (at === undefined || t < at) continue;
-    if (!b.visible) { b.visible = true; bubblePop(); }
+    if (!b.visible) { b.visible = true; if (b.userData.sound && onCamera(b.parent.position)) bubblePop(); } // …and only if they are on screen
     const k = (t - at) / 0.6, B = b.userData.base, g = bounce(k), w = k >= 1 ? 0 : Math.exp(-5 * k) * Math.sin(14 * k) * 0.35; // grow, then stretch and squash
     b.scale.set(B.x * g * (1 - w * 0.6), B.y * g * (1 + w), B.z * g * (1 - w * 0.6));
     if (k >= 1) { b.scale.copy(B); delete b.userData.popAt; }
@@ -632,7 +633,8 @@ function tone(f0, f1, dur, gain, type = 'sine', when = 0) {
   } catch (e) {}
 }
 const chime = () => { tone(784, 784, 0.22, 0.16, 'triangle'); tone(1175, 1175, 0.45, 0.16, 'triangle', 0.14); }; // pum-pim
-const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 700, 0.06, 0.09);
+const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 700, 0.07, 0.2);
+const ndc = new THREE.Vector3(), onCamera = p => { ndc.copy(p).project(camera); return Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1; };
 function play(name, volume = 0.8) { try { const a = SFX[name].cloneNode(); a.volume = volume; a.play().catch(() => {}); } catch (e) {} }
 const shouts = []; // comic "!" lines
 const shoutMats = { car: new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }), dog: new THREE.MeshBasicMaterial({ color: 0xff8a1f, depthTest: false }) }; // white for the horn, orange for the dog
@@ -759,7 +761,7 @@ function collect(p) {
   if (last) { // confetti, a trophy rising from the summit, then the closing message
     carpetOn = false; chevrons.count = 0; confetti(); raiseTrophy(p.group.position);
     setTimeout(() => {
-      $('finaleCredits').innerHTML = creditsHtml();
+      $('finaleCredits').innerHTML = creditsHtml(); $('finaleCredits').hidden = true;
       if (!EMBEDDED) { $('finaleMsg').textContent = 'Head back to the CV page to read it all.'; $('finaleClose').textContent = 'Back to the CV'; }
       $('finale').style.display = 'flex';
     }, 3000);
@@ -768,7 +770,7 @@ function collect(p) {
   setTimeout(() => {
     if (n === 1) { hudOn.speed = hudOn.map = true; popIn($('minimap')); popIn(speedEl); }
     if (n === 2) showBoxes(clock.elapsedTime);
-    if (n === 3) { carpetOn = true; carpetT0 = clock.elapsedTime; pickups[3].group.visible = true; toast('Follow the AR carpet to the highest summit'); }
+    if (n === 3) carpetPending = true; // the carpet waits until the crawler moves
   }, 2500);
 }
 function closeGame() {
@@ -778,6 +780,7 @@ function closeGame() {
   setTimeout(() => { try { window.parent.location.reload(); } catch (e) {} }, 800); // still here? the page did not answer: reload it
 }
 $('finaleClose').addEventListener('click', closeGame);
+$('finaleCreditsBtn').addEventListener('click', () => { const c = $('finaleCredits'); c.hidden = !c.hidden; $('finaleCreditsBtn').textContent = c.hidden ? 'credits ▸' : 'credits ▾'; });
 
 // the trophy: rises from the summit and floats in the air
 const trophy = new THREE.Group(); trophy.visible = false; scene.add(trophy);
