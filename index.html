@@ -758,19 +758,19 @@
     });
   </script>
 
-  <!-- Cool CV game: a square window over the page, about a quarter of the screen -->
-  <div id="cool-cv-modal" class="fixed z-50 hidden flex-col rounded-lg overflow-hidden shadow-2xl border-2 border-github-accent-emphasis bg-black"
-       style="right:16px; bottom:16px; width:min(66vh, calc(100vw - 32px)); height:calc(min(66vh, calc(100vw - 32px)) + 30px)" role="dialog" aria-label="Cool CV game">
-    <div class="flex items-center justify-between px-3 text-xs font-medium text-white bg-github-accent-emphasis" style="height:30px">
-      <span>Cool CV · click the game, then use the arrows</span>
-      <button type="button" id="cool-cv-close" class="px-2 py-0.5 rounded bg-white/90 text-black hover:bg-white" aria-label="Close game">Close ✕</button>
+  <!-- Cool CV game: a square window over the page, about a quarter of the screen, styled like the page -->
+  <div id="cool-cv-modal" class="fixed z-50 hidden flex-col rounded-md overflow-hidden shadow-xl border-2 border-github-border-default dark:border-github-border-dark bg-white dark:bg-github-canvas-dark"
+       style="right:16px; bottom:16px; width:min(66vh, calc(100vw - 32px)); height:calc(min(66vh, calc(100vw - 32px)) + 36px)" role="dialog" aria-label="Cool CV game">
+    <div class="flex items-center justify-between px-3 border-b-2 border-github-border-default dark:border-github-border-dark bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle" style="height:36px">
+      <span class="text-sm font-medium text-github-fg-default dark:text-github-fg-dark" style="font-family:'JetBrains Mono',monospace">Cool CV</span>
+      <button type="button" id="cool-cv-close" class="px-2 py-0.5 text-xs font-medium rounded-md border-2 border-github-border-default dark:border-github-border-dark bg-white dark:bg-github-canvas-dark-subtle text-github-fg-default dark:text-github-fg-dark hover:border-github-accent-emphasis dark:hover:border-github-accent-dark" aria-label="Close game">Close ✕</button>
     </div>
     <iframe id="cool-cv-frame" title="Cool CV" class="w-full border-0 flex-1" allow="fullscreen"></iframe>
   </div>
   <script>
     (function () {
       const modal = document.getElementById('cool-cv-modal'), frame = document.getElementById('cool-cv-frame');
-      const open = () => { if (!frame.getAttribute('src')) frame.src = 'cool-cv/index.html'; modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => frame.focus(), 50); };
+      const open = () => { if (!frame.getAttribute('src')) frame.src = 'cool-cv/index.html?theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light'); modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => frame.focus(), 50); };
       const close = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
       document.getElementById('cool-cv-btn').addEventListener('click', open);
       document.getElementById('cool-cv-close').addEventListener('click', close);

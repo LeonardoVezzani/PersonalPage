@@ -63,13 +63,13 @@ function height(x, z) {
 
 // ---------------------------------------------------------------- CV content
 const CV = [
-  { id: 'edu', title: 'Education & languages', where: 'the southern meadows', pos: polar(90, 52), color: 0x2f81f7, unlock: 'Speedometer unlocked',
+  { id: 'edu', title: 'Education & languages', where: 'the southern meadows', pos: polar(90, 52), color: 0xcf222e, unlock: 'Speedometer unlocked',
     html: `<ul><li><b>PhD, Computer Engineering</b> · Politecnico di Torino · 2022 – present</li><li><b>MSc, Cinema and Multimedia Engineering</b> · PoliTO · 2019 – 2022<br><span style="opacity:.75">Thesis: locomotion interface for VR based on seat pressure mapping</span></li><li><b>BSc, Cinema and Multimedia Engineering</b> · PoliTO · 2015 – 2019</li><li>CIFIS · 24 CFU teacher training · 2021</li></ul><p><b>Languages:</b> Italian (native) · English (C1) · French (A2) · Spanish (A1)</p>` },
-  { id: 'proj', title: 'Projects & skills', where: 'the north-west slopes', pos: polar(210, 52), color: 0xd29922, unlock: 'Altimeter & compass unlocked',
+  { id: 'proj', title: 'Projects & skills', where: 'the north-west slopes', pos: polar(210, 52), color: 0xcf222e, unlock: 'Altimeter & compass unlocked',
     html: `<ul><li><b>HoloACLS</b> – AR training for medical first responders (HoloLens 2)</li><li><b>Virtual Tour, Museo Paleontologico di Asti</b></li><li><b>S3lf</b> – VR storytelling with the National Film Board of Canada</li><li><b>Nexa City</b> – platform on digital rights, Nexa Center for Internet &amp; Society</li></ul><p><b>Skills:</b> experimental design, user research, prototyping, data analysis · project coordination, partnerships, teaching · Unity, Unreal Engine, CARLA, ROS2, Python · AR/VR/XR</p>` },
-  { id: 'pub', title: 'Publications', where: 'the north-east foothills', pos: polar(330, 52), color: 0xa371f7, unlock: 'Minimap unlocked',
+  { id: 'pub', title: 'Publications', where: 'the north-east foothills', pos: polar(330, 52), color: 0xcf222e, unlock: 'Minimap unlocked',
     html: `<ul><li><b>CARLA-IVR</b>: an open CARLA extension for immersive AR-HUD evaluation and reproducible experimental design – IEEE OJVT, 2026</li><li>A review of automotive AR-HUD interfaces across driver roles and automation levels – IEEE T-ITS, 2026</li><li>Towards CARLA VR: testing head-up displays in CARLA – SAI FICC, 2025</li><li>AR for warehouses: marker-based navigation and inventory – ICCSCC, 2024</li><li>The WalkingSeat: a leaning interface for VR locomotion – EuroXR, 2023</li></ul>` },
-  { id: 'exp', title: 'Experience', where: 'the highest summit of the ring', pos: SUMMIT, color: 0x3fb950, unlock: 'HUD complete',
+  { id: 'exp', title: 'Experience', where: 'the highest summit of the ring', pos: SUMMIT, color: 0xcf222e, unlock: 'HUD complete',
     html: `<ul><li><b>PhD researcher</b>, Politecnico di Torino (2022 – present): conceived CARLA-IVR, cutting immersive study setup from about a month to under a week; opened 8 industry and research collaborations</li><li><b>Co-lecturer &amp; thesis supervisor</b> (2023 – present): 7 master theses, 11 interdisciplinary student teams in industry challenges</li><li><b>Visiting researcher</b>, Computer Vision Center, Barcelona (2025)</li><li><b>Research assistant</b>, Reply (2023 – 2025)</li></ul>` },
 ];
 const CARPET_ROUTE = [[0, 8], polar(30, 40), polar(30, 66), SUMMIT];
@@ -324,7 +324,15 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
 // the last piece sits on the highest point near the summit
 { const exp = CV.find(c => c.id === 'exp'); let [bx, bz] = exp.pos, best = -1e9;
   for (let dx = -5; dx <= 5; dx += 0.5) for (let dz = -5; dz <= 5; dz += 0.5) { const h = groundAt(exp.pos[0] + dx, exp.pos[1] + dz); if (h > best) { best = h; bx = exp.pos[0] + dx; bz = exp.pos[1] + dz; } }
-  exp.pos = [bx, bz]; CARPET_ROUTE[CARPET_ROUTE.length - 1] = [bx, bz]; }
+  exp.pos = [bx, bz];
+  // the carpet circles the mountain on the way up instead of going straight for the top
+  const route = [[0, 8], polar(30, 40)], a0 = Math.atan2(-bz, -bx);
+  for (let t = 0; t <= 1.0001; t += 1 / 30) {
+    let r = 22 * (1 - t) + 3; const a = a0 + t * Math.PI * 2.4; let px = bx + Math.cos(a) * r, pz = bz + Math.sin(a) * r;
+    while (Math.hypot(px, pz) > edgeR(Math.atan2(pz, px)) - 9 && r > 3) { r -= 1; px = bx + Math.cos(a) * r; pz = bz + Math.sin(a) * r; }
+    route.push([px, pz]);
+  }
+  route.push([bx, bz]); CARPET_ROUTE.length = 0; CARPET_ROUTE.push(...route); }
 const pickups = CV.map((p, k) => {
   const [x, z] = p.pos, y = groundAt(x, z);
   const g = new THREE.Group(); g.position.set(x, y, z);
@@ -402,13 +410,17 @@ const chevGeo = (() => { const s = new THREE.Shape(); s.moveTo(-1.1, -0.5); s.li
 const chevMat = new THREE.MeshBasicMaterial({ color: PAL.ar, transparent: true, opacity: 0.85, depthWrite: false, fog: false });
 const chevrons = Array.from({ length: CHEVRONS }, () => { const m = new THREE.Mesh(chevGeo, chevMat.clone()); m.visible = false; scene.add(m); return m; });
 let carpetOn = false;
+let carpetSeg = 0; // the route segment the car has reached; the carpet only moves forward along the spiral
 function carpetPath(px, pz) {
   const route = CARPET_ROUTE; let best = 1e9, bi = 0, bp = null;
-  for (let i = 0; i < route.length - 1; i++) {
+  const scan = (from, to) => { for (let i = Math.max(0, from); i < Math.min(route.length - 1, to); i++) {
     const [ax, az] = route[i], [bx, bz] = route[i + 1], dx = bx - ax, dz = bz - az;
     let t = ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz); t = Math.max(0, Math.min(1, t));
     const qx = ax + t * dx, qz = az + t * dz, d = Math.hypot(px - qx, pz - qz); if (d < best) { best = d; bi = i; bp = [qx, qz]; }
-  }
+  } };
+  scan(carpetSeg - 1, carpetSeg + 5);           // follow the spiral turn by turn…
+  if (best > 18) { best = 1e9; scan(0, route.length); } // …unless the car went somewhere else entirely
+  if (best < 8) carpetSeg = Math.max(carpetSeg, bi);
   const pts = [[px, pz]]; if (best > 6) pts.push(bp); else pts[0] = bp;
   for (let i = bi + 1; i < route.length; i++) pts.push(route[i]);
   return pts;
@@ -428,6 +440,103 @@ function updateCarpet(t) {
   for (; k < CHEVRONS; k++) chevrons[k].visible = false;
 }
 
+// ---------------------------------------------------------------- people and animals
+// Stylised walkers that wander the valley; with the 2nd fragment they get red AR bounding boxes.
+const walkers = [];
+{
+  const mat = c => toon({ color: c });
+  const boxMat = new THREE.LineBasicMaterial({ color: 0xff2d2d, depthTest: false, transparent: true });
+  const frame = (w, h, d) => { const l = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), boxMat); l.position.y = h / 2; l.renderOrder = 10; l.visible = false; return l; };
+  function sheep() {
+    const g = new THREE.Group(), add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+    add(new THREE.BoxGeometry(1.3, 1.0, 1.9), mat(PAL.snow), 0, 1.15, 0);
+    add(new THREE.BoxGeometry(0.6, 0.6, 0.6), mat(0x353335), 0, 1.45, 1.15);
+    for (const [x, z] of [[-0.4, 0.6], [0.4, 0.6], [-0.4, -0.6], [0.4, -0.6]]) add(new THREE.BoxGeometry(0.22, 0.65, 0.22), mat(0x353335), x, 0.33, z);
+    g.add(frame(1.8, 2.0, 2.8)); return g;
+  }
+  function person(shirt) {
+    const g = new THREE.Group(), add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+    add(new THREE.CylinderGeometry(0.42, 0.5, 1.3, 8), mat(shirt), 0, 1.35, 0);
+    add(new THREE.SphereGeometry(0.38, 10, 8), mat(0xe9c9a6), 0, 2.3, 0);
+    for (const x of [-0.2, 0.2]) add(new THREE.BoxGeometry(0.24, 0.75, 0.26), mat(0x353335), x, 0.38, 0);
+    g.add(frame(1.3, 2.8, 1.3)); return g;
+  }
+  const spots = [[100, 30], [120, 36], [200, 30], [260, 40], [300, 26], [40, 40], [160, 20], [340, 44], [80, 44], [235, 44], [10, 28], [280, 36]];
+  spots.forEach(([deg, r], i) => {
+    const home = polar(deg, r), isSheep = i % 3 !== 0;
+    const count = isSheep ? 3 : 1;
+    for (let k = 0; k < count; k++) {
+      const g = isSheep ? sheep() : person([PAL.wall, 0x566c8d, PAL.roof, PAL.olive][i % 4]);
+      const x = home[0] + (k - 1) * 3, z = home[1] + (k % 2) * 3;
+      if (groundAt(x, z) < WATER_Y + 0.6) continue; // never start in the lake
+      g.position.set(x, groundAt(x, z), z); scene.add(g);
+      walkers.push({ g, home, speed: isSheep ? 1.4 : 2.4, target: [x, z], wait: Math.random() * 2, knocked: 0, kind: isSheep ? 'sheep' : 'person' });
+    }
+  });
+}
+function showBoxes(on) { for (const w of walkers) w.g.children.forEach(c => { if (c.isLineSegments) c.visible = on; }); }
+let hitToastT = 0;
+function updateWalkers(dt, t) {
+  const cp = chassisBody.position; hitToastT -= dt;
+  for (const w of walkers) {
+    const p = w.g.position;
+    if (w.knocked > 0) { // tipped over by the crawler: lie down, then get back up
+      w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
+    }
+    const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
+    if (dc < 3.6) { w.knocked = 1.8; if (hitToastT <= 0) { toast(w.kind === 'sheep' ? 'Baa! Mind the sheep' : 'Hey! Watch where you drive'); hitToastT = 3; } chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    let speed = w.speed;
+    if (dc < 11) { // step aside when the crawler gets close
+      const ax = p.x - cp.x, az = p.z - cp.z, l = Math.hypot(ax, az) || 1; w.target = [p.x + ax / l * 8, p.z + az / l * 8]; speed *= 2.2; w.wait = 0;
+    } else if (w.wait > 0) { w.wait -= dt; continue; }
+    const dx = w.target[0] - p.x, dz = w.target[1] - p.z, d = Math.hypot(dx, dz);
+    if (d < 0.5) { // pick a new spot near home, on gentle ground
+      for (let k = 0; k < 8; k++) { const a = Math.random() * Math.PI * 2, r = Math.random() * 14, tx = w.home[0] + Math.cos(a) * r, tz = w.home[1] + Math.sin(a) * r, ty = groundAt(tx, tz);
+        if (ty > WATER_Y + 0.5 && ty < 7) { w.target = [tx, tz]; break; } }
+      w.wait = 1 + Math.random() * 3; continue;
+    }
+    const step = Math.min(d, speed * dt), nx = p.x + dx / d * step, nz = p.z + dz / d * step;
+    if (groundAt(nx, nz) < WATER_Y + 0.3) { w.target = [p.x, p.z]; continue; }
+    p.set(nx, groundAt(nx, nz) + Math.abs(Math.sin(t * speed * 4)) * 0.18, nz); w.g.rotation.y = Math.atan2(dx, dz);
+  }
+}
+
+// ---------------------------------------------------------------- dust, splashes and snow behind the wheels
+const PARTS = 320, parts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshBasicMaterial({ color: 0xffffff }), PARTS);
+parts.instanceMatrix.setUsage(THREE.DynamicDrawUsage); parts.frustumCulled = false; scene.add(parts);
+const pState = Array.from({ length: PARTS }, () => ({ life: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, s: 1 }));
+let pNext = 0;
+const SURF = { water: [0x9fe3ec, 0xffffff, PAL.water], snow: [0xffffff, PAL.snow, 0xdfe7ee], earth: [PAL.dirt, 0xa08a5a, 0x58421b], grass: [PAL.dirt, PAL.olive, PAL.grass], rock: [PAL.rock, PAL.rockLight, PAL.rockDark], sand: [PAL.sand, 0xe8dcb4, PAL.dirt] };
+function surfaceAt(x, z) {
+  const y = groundAt(x, z), e = 1, sl = Math.hypot(groundAt(x + e, z) - groundAt(x - e, z), groundAt(x, z + e) - groundAt(x, z - e)) / (2 * e);
+  if (y < WATER_Y) return 'water'; if (y < WATER_Y + 0.4) return 'sand'; if (y > 18) return 'snow';
+  if (sl > 1.3) return 'earth'; if (y > 8.5) return 'rock'; return y > 4.5 ? 'earth' : 'grass';
+}
+const tmpC = new THREE.Color(), tmpM = new THREE.Matrix4();
+for (let i = 0; i < PARTS; i++) { parts.setMatrixAt(i, tmpM.makeScale(0, 0, 0)); parts.setColorAt(i, tmpC.set(0xffffff)); }
+function updateParticles(dt) {
+  const v = chassisBody.velocity, sp = Math.hypot(v.x, v.z);
+  if (sp > 3 && started && !cardOpen) {
+    const fx = Math.sin(carYaw), fz = Math.cos(carYaw), n = sp > 10 ? 3 : 2;
+    for (const wi of [2, 3]) for (let k = 0; k < n; k++) { // rear wheels
+      const wp = chassisBody.pointToWorldFrame(WHEELS[wi], new CANNON.Vec3()), surf = surfaceAt(wp.x, wp.z), q = pState[pNext];
+      q.life = 0.5 + Math.random() * 0.4; q.x = wp.x - fx * 1.2; q.z = wp.z - fz * 1.2; q.y = groundAt(wp.x, wp.z) + 0.3;
+      const kick = surf === 'water' ? 1.6 : 1;
+      q.vx = -fx * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3; q.vz = -fz * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3; q.vy = (3 + Math.random() * 4) * kick;
+      q.s = (surf === 'snow' || surf === 'water' ? 1.2 : 1) * (0.7 + Math.random() * 0.6);
+      const cols = SURF[surf]; parts.setColorAt(pNext, tmpC.set(cols[(Math.random() * cols.length) | 0])); pNext = (pNext + 1) % PARTS;
+    }
+    parts.instanceColor.needsUpdate = true;
+  }
+  for (let i = 0; i < PARTS; i++) {
+    const q = pState[i]; if (q.life <= 0) continue;
+    q.life -= dt; q.vy -= 16 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
+    const g = groundAt(q.x, q.z); if (q.y < g) { q.y = g; q.vy *= -0.2; q.vx *= 0.6; q.vz *= 0.6; }
+    const s = Math.max(0, q.life) * 1.6 * q.s; parts.setMatrixAt(i, tmpM.makeScale(s, s, s).setPosition(q.x, q.y, q.z));
+  }
+  parts.instanceMatrix.needsUpdate = true;
+}
+
 // ---------------------------------------------------------------- input
 const keys = {};
 const GAME_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyR', 'KeyC'];
@@ -436,7 +545,6 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 const fwd = () => keys.KeyW || keys.ArrowUp, back = () => keys.KeyS || keys.ArrowDown, left = () => keys.KeyA || keys.ArrowLeft, right = () => keys.KeyD || keys.ArrowRight;
 function toggleMode() {
   driveMode = driveMode === 'map' ? 'car' : 'map';
-  document.getElementById('help').textContent = HELP[driveMode];
   toast(driveMode === 'map' ? 'Map controls: arrows point the car' : 'Car controls: up = gas, left/right = steer');
 }
 const HELP = { map: 'Arrows: point and go · C: car controls', car: 'Up: gas · Down: reverse · Left/Right: steer · C: map controls' };
@@ -444,8 +552,7 @@ const HELP = { map: 'Arrows: point and go · C: car controls', car: 'Up: gas · 
 
 // ---------------------------------------------------------------- HUD
 const $ = id => document.getElementById(id);
-const slots = $('slots');
-CV.forEach((p, k) => { const d = document.createElement('div'); d.className = 'slot'; d.id = 'slot-' + p.id; d.textContent = k < 3 ? p.title : '???'; slots.appendChild(d); });
+function updateFrags() { const got = pickups.filter(q => q.got).length; for (let i = 0; i < 4; i++) $('arc' + i).classList.toggle('got', i < got); $('fragCount').textContent = `${got} / 4`; }
 let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 2600); }
 let cardOpen = false;
 function openCard(html) { $('cardBox').innerHTML = html; $('card').style.display = 'flex'; cardOpen = true; }
@@ -475,13 +582,13 @@ function drawMinimap(heading) {
 function collect(p) {
   chassisBody.velocity.set(0, Math.min(0, chassisBody.velocity.y), 0); chassisBody.angularVelocity.setZero();
   p.got = true; p.group.visible = false;
-  const slot = $('slot-' + p.id); slot.classList.add('got'); slot.textContent = p.title;
+  updateFrags();
   const n = pickups.slice(0, 3).filter(q => q.got).length; // how many of the first three you have
   let unlock = p.unlock, extra = '';
   if (p.id !== 'exp') {
     if (n === 1) { hudOn.speed = hudOn.alt = true; $('speed').style.display = 'block'; $('alt').style.display = 'block'; unlock = 'Speedometer, altimeter & compass unlocked'; }
-    if (n === 2) { hudOn.map = true; $('minimap').style.display = 'block'; unlock = 'Minimap unlocked'; }
-    if (n === 3 && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; $('slot-exp').textContent = 'Experience'; unlock = 'AR navigation unlocked'; extra = '<p><b>Follow the AR carpet</b> to the last piece, on the highest summit of the ring.</p>'; }
+    if (n === 2) { hudOn.map = true; $('minimap').style.display = 'block'; showBoxes(true); unlock = 'Minimap & obstacle detection unlocked'; extra = '<p>People and animals are now framed in red: steer clear of them.</p>'; }
+    if (n === 3 && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; unlock = 'AR navigation unlocked'; extra = '<p><b>Follow the AR carpet</b> to the last piece, on the highest summit of the ring.</p>'; }
   }
   if (p.id === 'exp') {
     carpetOn = false; chevrons.forEach(c => (c.visible = false));
@@ -576,6 +683,7 @@ function frame() {
     for (const [bx, bz] of BORDER) if (bz > cz && bz - cz < 20 && Math.abs(bx - cx) < 10) { hide = true; break; }
     const target = hide ? 0.35 : 1; borderWall.material.opacity += (target - borderWall.material.opacity) * Math.min(1, dt * 6); borderWall.material.depthWrite = borderWall.material.opacity > 0.95;
   }
+  updateWalkers(dt, t); updateParticles(dt);
   for (const m of mixers) m.update(dt);
   updateCarpet(t);
   // HUD
@@ -589,8 +697,8 @@ function frame() {
 
 $('loading').style.display = 'none';
 const startEl = $('start'); startEl.style.display = 'flex';
-const begin = () => { if (started) return; started = true; startEl.style.display = 'none'; canvas.focus(); toast('Find the pieces of my CV: follow the light beams'); };
-startEl.addEventListener('click', begin);
+const begin = () => { if (started) return; started = true; startEl.style.display = 'none'; canvas.focus(); toast('Follow the red beams to the fragments'); };
+startEl.addEventListener('click', begin); $('startBtn').addEventListener('click', begin);
 window.addEventListener('keydown', begin, { once: true });
 frame();
 
