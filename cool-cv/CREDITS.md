@@ -1,4 +1,4 @@
-# Cool CV — credits
+# Jobride (Road to Hire) — credits
 
 Code: Leonardo Vezzani. Libraries: three.js (MIT), cannon-es (MIT), in `vendor/`.
 
