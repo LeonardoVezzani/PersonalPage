@@ -80,9 +80,9 @@ const CV = [
     html: `<ul><li><b>PhD researcher</b>, Politecnico di Torino (2022 – present): conceived CARLA-IVR, cutting immersive study setup from about a month to under a week; opened 8 industry and research collaborations</li><li><b>Co-lecturer &amp; thesis supervisor</b> (2023 – present): 7 master theses, 11 interdisciplinary student teams in industry challenges</li><li><b>Visiting researcher</b>, Computer Vision Center, Barcelona (2025)</li><li><b>Research assistant</b>, Reply (2023 – 2025)</li></ul>` },
 ];
 const CARPET_ROUTE = [];
-const DOG_POS = polar(150, 34); // somewhere in the valley
+const DOG_POS = polar(225, 84); // on the mountains, bottom left of the map
 const DOG_WAIT_K = 1.3; // the waiting dog is 30% bigger
-const dogRing = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange disc under the waiting dog
+const dogRing = new THREE.Mesh(new THREE.RingGeometry(0, 2.6, 40, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange disc under the waiting dog; it follows the slope (see below)
 dogRing.renderOrder = 2;
 const PDF_URL = '../CV_Vezzani_Printable.pdf';
 
@@ -437,7 +437,7 @@ const dog = new THREE.Group();
   dog.position.set(DOG_POS[0], groundAt(...DOG_POS), DOG_POS[1]);
   dog.scale.setScalar(3.3 * SIZE_K * DOG_WAIT_K); // bigger while waiting, so it is easy to spot
   scene.add(dog);
-  dogRing.position.set(DOG_POS[0], groundAt(...DOG_POS) + 0.08, DOG_POS[1]); scene.add(dogRing);
+  { const pa = dogRing.geometry.attributes.position; for (let k = 0; k < pa.count; k++) { const x = DOG_POS[0] + pa.getX(k), z = DOG_POS[1] + pa.getZ(k); pa.setXYZ(k, x, groundAt(x, z) + 0.12, z); } pa.needsUpdate = true; dogRing.geometry.computeBoundingSphere(); scene.add(dogRing); } // drape the disc over the terrain
 }
 // ---------------------------------------------------------------- optional glTF models
 const mixers = [];
