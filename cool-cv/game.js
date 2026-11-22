@@ -7,7 +7,7 @@ import { GLTFLoader } from './vendor/addons/loaders/GLTFLoader.js';
 // Optional 3D models: drop .glb files in cool-cv/assets/ and they replace the box models.
 // length = how long the model should be in world units; yaw = turn it so it faces +z (forward).
 const ASSETS = {
-  car: { url: 'assets/car.glb', length: 4.4, yaw: 0, hideWheels: true },
+  car: { url: 'assets/car.glb', length: 4.2, yaw: 0, hideWheels: true },
   dog: { url: 'assets/dog.glb', length: 1.3, yaw: 0 },
   tree: { url: 'assets/tree.glb', height: 3.4 },
   house: { url: 'assets/house.glb', length: 2.8 },
@@ -83,13 +83,33 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9cc9e8);
-scene.background = new THREE.Color(0x2b3440);
+// Palette taken from the four models: olive greens (tree), mustard and cream (car), ochre and red (house),
+// warm greys and slate blue (dog), cyan (house windows).
+const PAL = {
+  bg: 0x2e2c2d, base: 0x3a2a24, water: 0x3fb6c8, sand: 0xd2c69d, meadow: 0xa4a24c, grass: 0x858a33, olive: 0x6c6f2a,
+  dirt: 0x7a5a2a, rock: 0x6e6b67, rockDark: 0x545457, rockLight: 0xaba080, snow: 0xefeadb,
+  wall: 0xe7c76f, roof: 0xe74507, tree: 0x4a4c19, ar: 0x00cfe7,
+};
+scene.background = new THREE.Color(PAL.bg);
+// NPR: toon ramp with three hard steps, plus a soft ink darkening where surfaces turn away from the camera
+const TOON_RAMP = (() => { const t = new THREE.DataTexture(new Uint8Array([95, 95, 95, 255, 170, 170, 170, 255, 255, 255, 255, 255]), 3, 1); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
+function inkify(mat) {
+  mat.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+    'float inkRim = dot(normalize(normal), normalize(vViewPosition));\n  outgoingLight *= mix(0.62, 1.0, smoothstep(0.1, 0.3, inkRim));\n  #include <opaque_fragment>'); };
+  return mat;
+}
+const toon = (opts) => inkify(new THREE.MeshToonMaterial({ gradientMap: TOON_RAMP, ...opts }));
+function toonify(root) { // swap a model's PBR materials for toon ones with the same colours and textures
+  root.traverse(o => { if (!o.isMesh) return;
+    const conv = m => toon({ color: m.color, map: m.map || null, transparent: m.transparent, opacity: m.opacity, side: m.side });
+    o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material); o.castShadow = true; });
+  return root;
+}
 let VIEW = 26; // half height of the view, in world units
 const camera = new THREE.OrthographicCamera(-VIEW, VIEW, VIEW, -VIEW, -200, 600);
 const CAM_OFFSET = new THREE.Vector3(0, 1, 0.9).normalize().multiplyScalar(160); // from the south, looking down ~48°
-scene.add(new THREE.HemisphereLight(0xdfefff, 0x5a6b3a, 0.9));
-const sun = new THREE.DirectionalLight(0xfff2d6, 1.6);
+scene.add(new THREE.HemisphereLight(0xfff6e0, 0x6c6f2a, 1.0));
+const sun = new THREE.DirectionalLight(0xfff1cc, 2.0);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 });
@@ -106,32 +126,35 @@ function groundAt(x, z) { // bilinear on the samples, matches the meshes closely
   const u = fx - i, v = fz - j; const a = heights[i + j * N], b = heights[i + 1 + j * N], c = heights[i + (j + 1) * N], d = heights[i + 1 + (j + 1) * N];
   return a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v;
 }
-{
-  const pos = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), idx = [];
-  const cGrass = new THREE.Color(0x7fae4e), cPlain = new THREE.Color(0x9cc05a), cHill = new THREE.Color(0x5f8f3a), cRock = new THREE.Color(0x8a8278), cSnow = new THREE.Color(0xf4f6f8), cSand = new THREE.Color(0xc8b77a), tmp = new THREE.Color();
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const k = i + j * N, x = -HALF + i * ES, z = -HALF + j * ES, y = heights[k];
-    pos.set([x, y, z], k * 3);
-    const gx = (heights[Math.min(N - 1, i + 1) + j * N] - heights[Math.max(0, i - 1) + j * N]) / (2 * ES);
-    const gz = (heights[i + Math.min(N - 1, j + 1) * N] - heights[i + Math.max(0, j - 1) * N]) / (2 * ES);
-    const slope = Math.hypot(gx, gz);
-    if (y <= OUTSIDE_Y + 0.01) tmp.set(0x4a3f35);
-    else if (y < WATER_Y) tmp.set(0x3b7fc4);
-    else if (y < WATER_Y + 0.25) tmp.copy(cSand);
-    else if (y < 2.2) tmp.copy(cPlain).lerp(cGrass, smooth(1.3, 2.2, y));
-    else if (y < 6) tmp.copy(cGrass).lerp(cHill, smooth(2.2, 6, y));
-    else tmp.copy(cHill).lerp(cRock, smooth(6, 11, y));
-    if (slope > 0.8 && y > OUTSIDE_Y + 0.01) tmp.lerp(cRock, smooth(0.8, 1.4, slope));
-    if (y > 15) tmp.lerp(cSnow, smooth(15, 18, y));
-    tmp.offsetHSL(0, 0, (hash(i, j) - 0.5) * 0.015);
-    col.set([tmp.r, tmp.g, tmp.b], k * 3);
-  }
+{ // NPR terrain: one flat palette colour per face (hard cartoon bands), smooth normals for clean toon shading
+  const pos = new Float32Array(N * N * 3), idx = [];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = i + j * N; pos.set([-HALF + i * ES, heights[k], -HALF + j * ES], k * 3); }
   for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = i + j * N, b = a + 1, c = a + N, d = c + 1; idx.push(a, c, b, b, c, d); }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  let g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  g = g.toNonIndexed();
+  const P = g.attributes.position.array, col = new Float32Array(P.length), c = new THREE.Color(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  for (let f = 0; f < P.length / 9; f++) {
+    const o = f * 9, y = (P[o + 1] + P[o + 4] + P[o + 7]) / 3, cx = (P[o] + P[o + 3] + P[o + 6]) / 3, cz = (P[o + 2] + P[o + 5] + P[o + 8]) / 3;
+    e1.set(P[o + 3] - P[o], P[o + 4] - P[o + 1], P[o + 5] - P[o + 2]); e2.set(P[o + 6] - P[o], P[o + 7] - P[o + 1], P[o + 8] - P[o + 2]);
+    const ny = Math.abs(e1.cross(e2).normalize().y); // 1 = flat, 0 = vertical
+    const jitter = (hash(Math.floor(cx * 3), Math.floor(cz * 3)) - 0.5) * 1.2; // ragged band edges
+    const ymin = Math.min(P[o + 1], P[o + 4], P[o + 7]);
+    let hex;
+    if (y <= OUTSIDE_Y + 1) hex = PAL.base;
+    else if (ymin <= OUTSIDE_Y + 0.5) hex = PAL.rockDark; // the board's cut edge
+    else if (y < WATER_Y) hex = PAL.water;
+    else if (y < WATER_Y + 0.4) hex = PAL.sand;
+    else if (y > 18 + jitter && ny > 0.45) hex = PAL.snow;
+    else if (ny < 0.6) hex = y > 9 ? PAL.rockDark : PAL.dirt;
+    else if (y > 14.5 + jitter) hex = PAL.rockLight;
+    else if (y > 8.5 + jitter) hex = PAL.rock;
+    else if (y > 4.5 + jitter) hex = PAL.olive;
+    else if (y > 2.2 + jitter * 0.5) hex = PAL.grass;
+    else hex = PAL.meadow;
+    c.set(hex); for (let v = 0; v < 3; v++) col.set([c.r, c.g, c.b], o + v * 3);
+  }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  g.setIndex(idx); g.computeVertexNormals();
-  const terrain = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const terrain = new THREE.Mesh(g, toon({ vertexColors: true }));
   terrain.receiveShadow = true; scene.add(terrain);
 }
 
@@ -153,7 +176,7 @@ const BORDER_SEGS = BORDER.map((p, i) => [p, BORDER[(i + 1) % BORDER.length]]);
     b.position.set((ax + bx) / 2, 30, (az + bz) / 2); b.quaternion.setFromEuler(0, Math.atan2(-dz, dx), 0); world.addBody(b);
   }
   // visual: a jagged rock wall standing on the border line
-  const pos = [], col = [], idx = [], rock = new THREE.Color(0x7b736b), rock2 = new THREE.Color(0x5f5953), snow = new THREE.Color(0xf1f3f5), c = new THREE.Color();
+  const pos = [], col = [], idx = [], rock = new THREE.Color(PAL.rock), rock2 = new THREE.Color(PAL.rockDark), snow = new THREE.Color(PAL.snow), c = new THREE.Color();
   BORDER.forEach(([x, z], i) => {
     let g = -1e9; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; g = Math.max(g, groundAt(x + Math.cos(a) * 4, z + Math.sin(a) * 4)); }
     const top = Math.max(g, 1) + 8 + 5 * ridge(x * 0.1, z * 0.1);
@@ -162,7 +185,7 @@ const BORDER_SEGS = BORDER.map((p, i) => [p, BORDER[(i + 1) % BORDER.length]]);
     const j = (i + 1) % BORDER.length; idx.push(2 * i, 2 * j, 2 * i + 1, 2 * i + 1, 2 * j, 2 * j + 1);
   });
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
-  const wall = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, transparent: true, opacity: 1 })); wall.castShadow = true; wall.receiveShadow = true; scene.add(wall);
+  const wall = new THREE.Mesh(g, toon({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 1 })); wall.castShadow = true; wall.receiveShadow = true; scene.add(wall);
   borderWall = wall;
 }
 
@@ -209,7 +232,7 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
   const walls = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 2, 2.4), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 60);
   const roofGeo = new THREE.ConeGeometry(2.1, 1.5, 4); roofGeo.rotateY(Math.PI / 4);
   const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 60);
-  const wallCols = [0xf3e6c8, 0xf6d8a8, 0xeadfcf, 0xf0c9a0], roofCols = [0xb5523b, 0xa3442f, 0x8f3b2a, 0x6d6a66];
+  const wallCols = [PAL.wall, PAL.wall, PAL.sand, PAL.wall], roofCols = [PAL.roof, PAL.roof, PAL.dirt, PAL.roof];
   let n = 0, seed = 1;
   for (const [deg, r] of HAMLETS) {
     const [cx, cz] = polar(deg, r); if (!free(cx, cz, 16)) continue;
@@ -228,7 +251,7 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
   walls.count = roofs.count = n; walls.castShadow = roofs.castShadow = true; walls.receiveShadow = true; scene.add(walls, roofs);
   SCENERY.houseMeshes = [walls, roofs];
   // groves and loose trees, no colliders
-  const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(0.9, 2.6, 6), new THREE.MeshLambertMaterial({ color: 0x2f6b2f, flatShading: true }), 220);
+  const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(0.9, 2.6, 6), toon({ color: PAL.tree }), 220);
   let t = 0;
   const GROVES = [[20, 18], [80, 20], [110, 45], [150, 55], [200, 18], [230, 48], [280, 22], [320, 70], [100, 72], [355, 30]];
   for (const [deg, r] of GROVES) {
@@ -293,7 +316,7 @@ function fitModel(root, length, yaw) {
   const k = length / Math.max(size.z, size.x, 1e-6); root.scale.multiplyScalar(k); root.updateMatrixWorld(true);
   const b2 = new THREE.Box3().setFromObject(root), c = b2.getCenter(new THREE.Vector3());
   root.position.sub(new THREE.Vector3(c.x, b2.min.y, c.z));
-  root.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
+  toonify(root);
   return root;
 }
 function swapIn(group, gltf, cfg, yOffset, keep = []) {
@@ -308,7 +331,7 @@ function fitHeight(root, height) { // scale a model to a given height, feet on t
   root.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(root), size = b.getSize(new THREE.Vector3());
   root.scale.multiplyScalar(height / Math.max(size.y, 1e-6)); root.updateMatrixWorld(true);
   const b2 = new THREE.Box3().setFromObject(root), c = b2.getCenter(new THREE.Vector3()); root.position.sub(new THREE.Vector3(c.x, b2.min.y, c.z));
-  root.traverse(o => { if (o.isMesh) o.castShadow = true; }); return root;
+  toonify(root); return root;
 }
 gltfLoader.load(ASSETS.tree.url, g => {
   const proto = fitHeight(g.scene, ASSETS.tree.height);
@@ -328,7 +351,7 @@ let dogState = 'waiting', dogJumpT = 0; const dogJumpFrom = new THREE.Vector3();
 // ---------------------------------------------------------------- AR carpet
 const CHEVRONS = 46;
 const chevGeo = (() => { const s = new THREE.Shape(); s.moveTo(-1.1, -0.5); s.lineTo(0, 0.4); s.lineTo(1.1, -0.5); s.lineTo(1.1, 0.0); s.lineTo(0, 0.9); s.lineTo(-1.1, 0.0); s.closePath(); const g = new THREE.ShapeGeometry(s); g.scale(0.75, 0.75, 0.75); g.rotateX(-Math.PI / 2); g.rotateY(Math.PI); return g; })();
-const chevMat = new THREE.MeshBasicMaterial({ color: 0x39d3ff, transparent: true, opacity: 0.85, depthWrite: false, fog: false });
+const chevMat = new THREE.MeshBasicMaterial({ color: PAL.ar, transparent: true, opacity: 0.85, depthWrite: false, fog: false });
 const chevrons = Array.from({ length: CHEVRONS }, () => { const m = new THREE.Mesh(chevGeo, chevMat.clone()); m.visible = false; scene.add(m); return m; });
 let carpetOn = false;
 function carpetPath(px, pz) {
