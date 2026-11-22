@@ -300,9 +300,10 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
     const [cx, cz] = polar(deg, r); if (!free(cx, cz, 16)) continue;
     const count = 4 + Math.floor(hash(deg, r) * 3);
     for (let k = 0, tries = 0; k < count && tries < 30 && n < 60; tries++) {
-      seed++; const a = hash(seed, 3) * Math.PI * 2, d = 2.5 + hash(seed, 5) * 6, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = groundAt(x, z);
+      seed++; const a = hash(seed, 3) * Math.PI * 2, d = 3.5 + hash(seed, 5) * 9, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = groundAt(x, z);
       if (!free(x, z, 12) || y < WATER_Y + 0.4) continue;
-      const sc = 0.85 + hash(seed, 9) * 0.3, h = 0.8 + hash(seed, 11) * 0.4, rot = hash(seed, 13) * Math.PI;
+      const HOUSE_K = 1.5; // houses at 1.5x
+      const sc = (0.85 + hash(seed, 9) * 0.3) * HOUSE_K, h = (0.8 + hash(seed, 11) * 0.4) * HOUSE_K, rot = hash(seed, 13) * Math.PI;
       Q.setFromAxisAngle(Y, rot);
       M.compose(V.set(x, y + h, z), Q, S.set(sc, h, sc)); walls.setMatrixAt(n, M); walls.setColorAt(n, C.set(wallCols[seed % 4]));
       M.compose(V.set(x, y + 2 * h + 0.75 * sc, z), Q, S.set(sc, sc, sc)); roofs.setMatrixAt(n, M); roofs.setColorAt(n, C.set(roofCols[seed % 4]));
@@ -495,7 +496,7 @@ function updateWalkers(dt, t) {
       w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
     }
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
-    if (dc < 3.6) { w.knocked = 1.8; if (hitToastT <= 0) { toast(w.kind === 'sheep' ? 'Baa! Mind the sheep' : 'Hey! Watch where you drive'); hitToastT = 3; } chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    if (dc < 3.6) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person', 0.7); if (hitToastT <= 0) { toast(w.kind === 'sheep' ? 'Baa! Mind the sheep' : 'Hey! Watch where you drive'); hitToastT = 3; } chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
     if (w.scared > 0) { w.scared -= dt; speed *= 3; }
     else if (dc < 11) { // step aside when the crawler gets close
@@ -550,7 +551,7 @@ function updateParticles(dt) {
 }
 
 // ---------------------------------------------------------------- horn (or bark) and confetti
-const SFX = { honk: new Audio('assets/sfx/honk.mp3'), bark: new Audio('assets/sfx/bark.mp3') };
+const SFX = { honk: new Audio('assets/sfx/honk.mp3'), bark: new Audio('assets/sfx/bark.mp3'), sheep: new Audio('assets/sfx/sheep.mp3'), person: new Audio('assets/sfx/person.mp3') };
 Object.values(SFX).forEach(a => { a.preload = 'auto'; });
 function play(name, volume = 0.8) { try { const a = SFX[name].cloneNode(); a.volume = volume; a.play().catch(() => {}); } catch (e) {} }
 let audioCtx = null;
