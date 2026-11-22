@@ -58,8 +58,10 @@
   </div>
 </div>
 
-<script type="importmap">
-{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/", "cannon-es": "./vendor/cannon-es.min.js" } }
+<script>
+  // show load errors instead of a silent "Building Piemonte…"
+  window.addEventListener('error', e => { const l = document.getElementById('loading'); if (l && l.style.display !== 'none') l.textContent = 'Could not start the game: ' + (e.message || 'a file did not load'); }, true);
+  window.addEventListener('unhandledrejection', e => { const l = document.getElementById('loading'); if (l && l.style.display !== 'none') l.textContent = 'Could not start the game: ' + (e.reason && e.reason.message || e.reason); });
 </script>
 <script type="module" src="./game.js"></script>
 </body>

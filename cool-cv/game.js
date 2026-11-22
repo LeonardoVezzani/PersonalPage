@@ -1,8 +1,8 @@
 // Cool CV — a small off-road game across a stylized Piemonte.
 // three.js for rendering, cannon-es for physics. No build step.
-import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as THREE from './vendor/three.module.min.js';
+import * as CANNON from './vendor/cannon-es.min.js';
+import { GLTFLoader } from './vendor/addons/loaders/GLTFLoader.js';
 
 // Optional 3D models: drop .glb files in cool-cv/assets/ and they replace the box models.
 // length = how long the model should be in world units; yaw = turn it so it faces +z (forward).
