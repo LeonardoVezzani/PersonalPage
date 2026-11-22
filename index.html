@@ -778,7 +778,7 @@
       function openGame() {
         sections().forEach(s => { s.classList.add('hidden'); s.style.opacity = ''; });
         panel.classList.remove('hidden');
-        frame.src = 'cool-cv/index.html?embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        frame.src = 'cool-cv/index.html?v=19&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => frame.focus(), 400);
       }
@@ -792,10 +792,12 @@
           requestAnimationFrame(() => requestAnimationFrame(() => { s.style.opacity = '1'; }));
         });
       }
+      function closeAndRead() { closeGame(); document.querySelector('[data-frag]').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      window.coolCvClose = () => setTimeout(closeAndRead, 0); // called by the game's Close game button
       window.addEventListener('message', e => {
         if (e.origin !== location.origin || !e.data || typeof e.data !== 'object') return;
         if (e.data.type === 'coolcv:reveal') revealSections(e.data.last ? [e.data.id, 'end'] : [e.data.id]);
-        if (e.data.type === 'coolcv:close') { closeGame(); document.querySelector('[data-frag]').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        if (e.data.type === 'coolcv:close') closeAndRead();
       });
       document.getElementById('cool-cv-btn').addEventListener('click', openGame);
       document.getElementById('cool-cv-close').addEventListener('click', closeGame);
