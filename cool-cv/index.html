@@ -9,7 +9,7 @@
   /* The game's own palette (cream, sand, earth brown, terracotta, the pages' red), the same in both page themes */
   :root { --bg: #f4ecd4; --subtle: #e6d8b2; --border: #7a5a2a; --fg: #3a2a24; --muted: #7d6a52; --accent: #b4654f; --red: #cf222e; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #2e2c2d; font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; color: var(--fg); }
-  canvas#game { display: block; width: 100%; height: 100%; outline: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
+  canvas#game { display: block; width: 100%; height: 100%; outline: none; touch-action: none; cursor: crosshair; -webkit-tap-highlight-color: transparent; }
   html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
   .hud { position: absolute; pointer-events: none; }
   .chip { background: var(--bg); border: 2px solid var(--border); border-radius: 6px; color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
@@ -118,6 +118,7 @@
     <h2>Find Leonardo's CV fragments</h2>
     <p class="muted"><b>Four fragments</b> of my CV are hidden around the valley. Each one adds a piece to your <b>HUD</b>; the last one is waiting on the <b>highest summit</b>.</p>
     <table>
+      <tr><td class="keys">Click / hold</td><td>drive towards the mouse (click the crawler: horn)</td></tr>
       <tr><td class="keys"><kbd>↑</kbd> <kbd>↓</kbd></td><td>gas, reverse</td></tr>
       <tr><td class="keys"><kbd>←</kbd> <kbd>→</kbd></td><td>steer</td></tr>
       <tr><td class="keys"><kbd>C</kbd></td><td>toggle simplified controls (the arrows point the crawler)</td></tr>
@@ -129,6 +130,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=24"></script>
+<script type="module" src="./game.js?v=25"></script>
 </body>
 </html>

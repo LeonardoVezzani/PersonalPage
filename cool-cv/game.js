@@ -75,7 +75,12 @@ const CV = [ // the four CV pages hidden in the valley; their content is the CV 
   { id: 'exp', pos: SUMMIT, color: 0xcf222e }, // the last one, on the highest summit of the ring
 ];
 const CARPET_ROUTE = [];
-const DOG_POS = polar(225, 84); // on the mountains, bottom left of the map
+const DOG_POS = (() => { // somewhere new every game: up on the mountains, at least a screen away from every CV page and from the start
+  const ok = (x, z) => { const h = height(x, z), sl = Math.hypot(height(x + 1, z) - height(x - 1, z), height(x, z + 1) - height(x, z - 1)) / 2;
+    return h > 7 && h < 15 && sl < 1.2 && Math.hypot(x, z) < rimAt(x, z) - 14 && Math.hypot(x, z - 8) > 30 && CV.every(c => Math.hypot(x - c.pos[0], z - c.pos[1]) > 40); };
+  for (let k = 0; k < 800; k++) { const [x, z] = polar(Math.random() * 360, R_EDGE * (0.55 + Math.random() * 0.3)); if (ok(x, z)) return [x, z]; }
+  return polar(225, 84);
+})();
 const DOG_WAIT_K = 1.3; // the waiting dog is 30% bigger
 const dogRing = new THREE.Mesh(new THREE.RingGeometry(0, 2.6, 40, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange disc under the waiting dog; it follows the slope (see below)
 dogRing.renderOrder = 2;
@@ -787,7 +792,7 @@ function drawMinimap(heading) {
   const { c, x0, x1, z0, z1 } = mmBase; mm.clearRect(0, 0, 150, 190); mm.drawImage(c, 0, 0);
   const toM = (x, z) => [(x - x0) / (x1 - x0) * 149, (z - z0) / (z1 - z0) * 189];
   for (const p of pickups) { if (p.got || !p.group.visible) continue; const [mx, my] = toM(...p.pos); mm.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); mm.fillRect(mx - 3, my - 3, 6, 6); }
-  if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.font = '13px sans-serif'; mm.textAlign = 'center'; mm.textBaseline = 'middle'; mm.fillText('🐕', dx, dy); }
+  if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.fillStyle = '#2f6fb5'; mm.strokeStyle = '#ffffff'; mm.lineWidth = 2; mm.beginPath(); mm.arc(dx, dy, 4.5, 0, Math.PI * 2); mm.fill(); mm.stroke(); } // the dog: a blue dot
   const [cx, cy] = toM(chassisBody.position.x, chassisBody.position.z);
   mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#e7c76f'; mm.strokeStyle = '#3a2a24'; mm.lineWidth = 1.5; mm.beginPath(); mm.moveTo(0, -7); mm.lineTo(5, 5); mm.lineTo(-5, 5); mm.closePath(); mm.fill(); mm.stroke(); mm.restore(); // the crawler, mustard like the car
 }
