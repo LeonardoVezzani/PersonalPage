@@ -94,7 +94,7 @@ const scene = new THREE.Scene();
 // warm greys and slate blue (dog), cyan (house windows).
 const PAL = {
   bg: 0x2e2c2d, base: 0x3a2a24, water: 0x3fb6c8, sand: 0xd2c69d, meadow: 0xa4a24c, grass: 0x858a33, olive: 0x6c6f2a,
-  dirt: 0x7a5a2a, rock: 0x6e6b67, rockDark: 0x545457, rockLight: 0xaba080, snow: 0xefeadb,
+  dirt: 0x7a5a2a, rock: 0x6e6b67, rockDark: 0x545457, rockLight: 0xaba080, snow: 0xf3f8fd, snowShade: 0xdde9f5,
   wall: 0xe7c76f, roof: 0xb4654f, tree: 0x4a4c19, ar: 0x00cfe7,
 };
 scene.background = new THREE.Color(PAL.bg);
@@ -199,9 +199,9 @@ function groundAt(x, z) { // bilinear on the samples, matches the meshes closely
     else if (ymin <= OUTSIDE_Y + 0.5) hex = PAL.bg; // the board's cut edge, as dark as the background
     else if (y < WATER_Y) hex = PAL.water;
     else if (y < WATER_Y + 0.4) hex = PAL.sand;
-    else if (y > 18 + jitter && ny > 0.45) hex = PAL.snow;
+    else if (y > 15.5 + jitter && ny > 0.4) hex = (hash(Math.floor(cx), Math.floor(cz)) > 0.7 ? PAL.snowShade : PAL.snow);
     else if (ny < 0.6) hex = y > 9 ? PAL.rockDark : PAL.dirt;
-    else if (y > 14.5 + jitter) hex = PAL.rockLight;
+    else if (y > 13 + jitter) hex = PAL.rockLight;
     else if (y > 8.5 + jitter) hex = PAL.rock;
     else if (y > 4.5 + jitter) hex = PAL.olive;
     else if (y > 2.2 + jitter * 0.5) hex = PAL.grass;
@@ -276,6 +276,15 @@ const car = new THREE.Group(); car.scale.setScalar(CAR_SCALE); scene.add(car);
   add(new THREE.BoxGeometry(2.2, 0.25, 0.25), mat(0x333333), 0, 0.0, 2.15);           // bull bar
   for (const x of [-0.6, 0.6]) add(new THREE.BoxGeometry(0.35, 0.22, 0.06), mat(0xfff3b0), x, 0.35, 2.12); // lights
   add(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10), mat(0x222222), 0, 0.45, -2.2).rotation.x = Math.PI / 2; // spare wheel
+}
+const carAxles = [];
+{ // the driver: a small stylised person at the wheel
+  const d = new THREE.Group(), m = c => toon({ color: c });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.6, 8), m(0x566c8d)); body.position.y = 0.3; d.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), m(0xe9c9a6)); head.position.y = 0.78; d.add(head);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 10), m(0xcf222e)); cap.position.y = 0.95; d.add(cap);
+  d.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  d.position.set(0.32, 0.05, 0.15); car.add(d); car.userData.driver = d;
 }
 car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, 0.2, -1.1); car.add(car.userData.seat); // the back of the crawler
 const wheelMeshes = WHEELS.map(() => {
@@ -448,7 +457,9 @@ function swapIn(group, gltf, cfg, yOffset, keep = []) {
   if (gltf.animations?.length) { const m = new THREE.AnimationMixer(gltf.scene); m.clipAction(gltf.animations[0]).play(); mixers.push(m); }
 }
 const gltfLoader = new GLTFLoader();
-gltfLoader.load(ASSETS.car.url, g => { swapIn(car, g, ASSETS.car, ASSETS.car.hideWheels ? -1.27 : -0.65, [car.userData.seat]); if (ASSETS.car.hideWheels) wheelMeshes.forEach(w => (w.visible = false)); usedCredits.add('car'); }, undefined, () => {});
+gltfLoader.load(ASSETS.car.url, g => {
+  g.scene.traverse(o => { if (/^tire_/.test(o.name)) carAxles.push(o); }); // the two axles of the model spin
+  swapIn(car, g, ASSETS.car, ASSETS.car.hideWheels ? -1.27 : -0.65, [car.userData.seat, car.userData.driver]); if (ASSETS.car.hideWheels) wheelMeshes.forEach(w => (w.visible = false)); usedCredits.add('car'); }, undefined, () => {});
 gltfLoader.load(ASSETS.dog.url, g => { swapIn(dog, g, ASSETS.dog, 0); dog.userData.custom = true; usedCredits.add('dog'); }, undefined, () => {});
 function fitHeight(root, height) { // scale a model to a given height, feet on the ground, centred
   root.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(root), size = b.getSize(new THREE.Vector3());
@@ -469,6 +480,7 @@ gltfLoader.load(ASSETS.house.url, g => {
 const usedCredits = new Set();
 const creditsHtml = () => usedCredits.size ? `<p style="font-size:11px;opacity:.7;margin-top:12px">3D models (CC BY 4.0, Sketchfab): ${[...usedCredits].map(k => CREDITS[k]).join(' · ')}</p>` : '';
 
+let dogSide = 1, dogTurnT = 4;
 let dogState = 'waiting', dogJumpT = 0; const dogJumpFrom = new THREE.Vector3();
 
 // ---------------------------------------------------------------- AR carpet
@@ -512,8 +524,14 @@ function updateCarpet(t) {
 const walkers = [];
 {
   const mat = c => toon({ color: c });
-  const boxMat = new THREE.LineBasicMaterial({ color: 0xff2d2d, depthTest: false, transparent: true });
-  const frame = (w, h, d) => { const l = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), boxMat); l.position.y = h / 2; l.renderOrder = 10; l.visible = false; return l; };
+  const boxMat = new THREE.LineBasicMaterial({ color: 0xff2d2d });
+  const occMat = new THREE.MeshBasicMaterial({ colorWrite: false }); // writes depth only, so the back edges of the box are hidden
+  const frame = (w, h, d) => {
+    const g = new THREE.Group(); g.position.y = h / 2; g.visible = false; g.userData.isBox = true;
+    const occ = new THREE.Mesh(new THREE.BoxGeometry(w * 0.98, h * 0.98, d * 0.98), occMat); occ.renderOrder = 9; g.add(occ);
+    const l = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), boxMat); l.renderOrder = 10; g.add(l);
+    return g;
+  };
   function sheep() {
     const g = new THREE.Group(), add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
     add(new THREE.BoxGeometry(1.3, 1.0, 1.9), mat(PAL.snow), 0, 1.15, 0);
@@ -541,7 +559,7 @@ const walkers = [];
     }
   });
 }
-function showBoxes(on) { for (const w of walkers) w.g.children.forEach(c => { if (c.isLineSegments) c.visible = on; }); }
+function showBoxes(on) { for (const w of walkers) w.g.children.forEach(c => { if (c.userData.isBox) c.visible = on; }); }
 let hitToastT = 0;
 function updateWalkers(dt, t) {
   const cp = chassisBody.position; hitToastT -= dt;
@@ -577,7 +595,7 @@ let pNext = 0;
 const SURF = { water: [0x9fe3ec, 0xffffff, PAL.water], snow: [0xffffff, PAL.snow, 0xdfe7ee], earth: [PAL.dirt, 0xa08a5a, 0x58421b], grass: [PAL.dirt, PAL.olive, PAL.grass], rock: [PAL.rock, PAL.rockLight, PAL.rockDark], sand: [PAL.sand, 0xe8dcb4, PAL.dirt] };
 function surfaceAt(x, z) {
   const y = groundAt(x, z), e = 1, sl = Math.hypot(groundAt(x + e, z) - groundAt(x - e, z), groundAt(x, z + e) - groundAt(x, z - e)) / (2 * e);
-  if (y < WATER_Y) return 'water'; if (y < WATER_Y + 0.4) return 'sand'; if (y > 18) return 'snow';
+  if (y < WATER_Y) return 'water'; if (y < WATER_Y + 0.4) return 'sand'; if (y > 15.5) return 'snow';
   if (sl > 1.3) return 'earth'; if (y > 8.5) return 'rock'; return y > 4.5 ? 'earth' : 'grass';
 }
 const tmpC = new THREE.Color(), tmpM = new THREE.Matrix4();
@@ -724,7 +742,7 @@ const mmBase = (() => { // pre-render the minimap terrain
   for (let py = 0; py < 190; py++) for (let px = 0; px < 150; px++) {
     const x = x0 + (x1 - x0) * px / 149, z = z0 + (z1 - z0) * py / 189, y = groundAt(x, z), o = (px + py * 150) * 4;
     if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 2) continue;
-    const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 2.2 ? [150, 190, 95] : y < 6 ? [95, 145, 60] : y < 15 ? [140, 130, 120] : [240, 240, 240];
+    const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 2.2 ? [150, 190, 95] : y < 6 ? [95, 145, 60] : y < 15.5 ? [140, 130, 120] : [244, 248, 253];
     img.data.set([r, gg, b, 245], o);
   }
   g.putImageData(img, 0, 0); return { c, x0, x1, z0, z1 };
@@ -745,7 +763,7 @@ function collect(p) {
   const n = pickups.slice(0, 3).filter(q => q.got).length; // how many of the first three you have
   let unlock = p.unlock, extra = '';
   if (p.id !== 'exp') {
-    if (n === 1) { hudOn.speed = hudOn.alt = true; $('speed').style.display = 'block'; $('alt').style.display = 'block'; unlock = 'Speedometer, altimeter & compass unlocked'; }
+    if (n === 1) { hudOn.speed = true; $('speed').style.display = 'block'; unlock = 'Speedometer unlocked'; }
     if (n === 2) { hudOn.map = true; $('minimap').style.display = 'block'; showBoxes(true); unlock = 'Minimap & obstacle detection unlocked'; extra = '<p>People and animals are now framed in red: steer clear of them.</p>'; }
     if (n === 3 && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; unlock = 'AR navigation unlocked'; extra = '<p><b>Follow the AR carpet</b> to the last piece, on the highest summit of the ring.</p>'; }
   }
@@ -815,6 +833,7 @@ function frame() {
   // sync visuals
   car.position.copy(chassisBody.position); car.quaternion.copy(chassisBody.quaternion);
   wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(new CANNON.Vec3(0, 0, 1))) * dt / WHEEL_R;
+  for (const a of carAxles) a.rotation.x = wheelSpin;
   const spinQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), wheelSpin);
   WHEELS.forEach((loc, i) => { const wp = chassisBody.pointToWorldFrame(loc, new CANNON.Vec3()); wheelMeshes[i].position.set(wp.x, wheelGround[i] + WHEEL_R, wp.z); wheelMeshes[i].quaternion.copy(car.quaternion).multiply(spinQ); }); // each wheel sits on the ground under it
   // camera: fixed isometric angle, follows the car smoothly
@@ -837,7 +856,7 @@ function frame() {
     dogJumpT += dt / 0.7; const to = car.userData.seat.getWorldPosition(new THREE.Vector3());
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
-  } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; dog.rotation.y = Math.PI / 2 + Math.sin(t * 0.7) * 0.15; }
+  } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
   { // fade the border cliffs when they stand between the camera (south) and the car
     const cx = car.position.x, cz = car.position.z; let hide = false;
     for (const [bx, bz] of BORDER) if (bz > cz && bz - cz < 20 && Math.abs(bx - cx) < 10) { hide = true; break; }
