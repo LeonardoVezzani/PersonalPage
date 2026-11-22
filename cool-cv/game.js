@@ -267,7 +267,7 @@ const carAxles = [];
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), m(0xe9c9a6)); head.position.y = 0.78; d.add(head);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 10), m(0xcf222e)); cap.position.y = 0.95; d.add(cap);
   d.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  d.position.set(0.32, 0.1, 0.15); car.add(d); car.userData.driver = d;
+  d.position.set(0.32, -0.1, 0.15); car.add(d); car.userData.driver = d;
 }
 car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, -0.32, -1.1); car.add(car.userData.seat); // the back of the crawler
 
