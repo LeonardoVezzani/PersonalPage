@@ -1,4 +1,4 @@
-// Jobride, Road to Hire — a small off-road game in a valley ringed by mountains.
+// Jobride, A trip to Hire Ground — a small off-road game in a valley ringed by mountains.
 // three.js for rendering, cannon-es for physics. No build step.
 import * as THREE from './vendor/three.module.min.js';
 import * as CANNON from './vendor/cannon-es.min.js';
