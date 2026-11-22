@@ -9,6 +9,8 @@ Code: Leonardo Vezzani. Libraries: three.js (MIT), cannon-es (MIT), in `vendor/`
 - `dog.glb` — "Blue Heeler - Australian Cattle Dog" by DavidA3D: https://sketchfab.com/3d-models/blue-heeler-australian-cattle-dog-17c6a24dfab7436e927bffd1738b4081
 - `house.glb` — "House lowpoly" by rkmorello: https://sketchfab.com/3d-models/house-lowpoly-4b85ef1104fa4243ad46df0a87105aed
 
+Changes: all models converted to glTF and restyled with toon materials in the game; the car's wheels split into axles and its texture downscaled to 512 px; the tree simplified to about 300 triangles.
+
 License: https://creativecommons.org/licenses/by/4.0/
 
 Sound effects in `assets/sfx/`: car horn (`honk.mp3`) and dog bark (`bark.mp3`) by Dragon Studio; sheep (`sheep.mp3`) by stu9; cartoon voice (`person.mp3`) from the Freesound community; victory fanfare (`fanfare.mp3`) by Chisper.
