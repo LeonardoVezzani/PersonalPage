@@ -215,17 +215,10 @@
         <button type="button" id="cool-cv-btn"
            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white dark:bg-github-canvas-dark-subtle border-2 border-github-accent-emphasis dark:border-github-accent-dark rounded-md hover:bg-github-canvas-subtle dark:hover:bg-github-canvas-dark transition-colors"
            title="Cool CV: drive around a mountain valley to collect my CV">
-          <svg class="w-5 h-5" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
-            <rect x="3" y="0" width="6" height="1" fill="#6b3e1f"/><rect x="2" y="1" width="8" height="1" fill="#6b3e1f"/>
-            <rect x="2" y="2" width="8" height="5" fill="#f1c27d"/>
-            <rect x="2" y="3" width="3" height="2" fill="#111"/><rect x="7" y="3" width="3" height="2" fill="#111"/><rect x="5" y="3" width="2" height="1" fill="#111"/>
-            <rect x="3" y="3" width="1" height="1" fill="#6ec1ff"/><rect x="8" y="3" width="1" height="1" fill="#6ec1ff"/>
-            <rect x="4" y="6" width="4" height="1" fill="#a0522d"/>
-            <rect x="3" y="7" width="6" height="1" fill="#f1c27d"/>
-            <rect x="1" y="8" width="10" height="4" fill="#e8590c"/><rect x="5" y="8" width="2" height="4" fill="#f08c00"/>
-          </svg>
+          <span aria-hidden="true">😎</span>
           <span>Cool CV</span>
         </button>
+        <span class="inline-flex items-center px-2 py-0.5 self-center text-xs font-mono text-github-fg-muted dark:text-github-fg-dark-muted border border-github-border-default dark:border-github-border-dark rounded-md" title="Work in progress">WIP</span>
       </div>
 
       <!-- Portfolio pages — secondary row, neutral/muted style -->
@@ -245,8 +238,26 @@
       </div>
     </header>
 
+    <!-- Cool CV: the game takes the place of the CV sections; each fragment found adds its sections back below -->
+    <section id="cool-cv-panel" class="mb-8 hidden" aria-label="Cool CV game">
+      <div class="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">
+        <h2 class="text-2xl font-bold">Cool CV <span class="ml-1 align-middle px-2 py-0.5 text-xs font-mono font-normal text-github-fg-muted dark:text-github-fg-dark-muted border border-github-border-default dark:border-github-border-dark rounded-md">WIP</span></h2>
+        <button type="button" id="cool-cv-close" class="px-3 py-1.5 text-sm font-medium rounded-md border-2 border-github-border-default dark:border-github-border-dark bg-white dark:bg-github-canvas-dark-subtle hover:border-github-accent-emphasis dark:hover:border-github-accent-dark">Show the whole CV ✕</button>
+      </div>
+      <div id="cool-cv-stage" class="relative mx-auto rounded-md overflow-hidden border-2 border-github-border-default dark:border-github-border-dark bg-black" style="width:min(100%, 78vh); aspect-ratio:1 / 1">
+        <iframe id="cool-cv-frame" title="Cool CV" class="absolute inset-0 w-full h-full border-0" allow="fullscreen"></iframe>
+        <div id="cool-cv-card" class="absolute inset-0 hidden items-center justify-center p-3 md:p-5" style="background:rgba(0,0,0,.35)">
+          <div id="cool-cv-card-box" class="w-full max-h-full overflow-auto bg-white dark:bg-github-canvas-dark rounded-md border-2 border-github-border-default dark:border-github-border-dark p-4 shadow-xl">
+            <div id="cool-cv-card-head" class="mb-3 text-xs font-mono text-github-accent-emphasis dark:text-github-accent-dark"></div>
+            <div id="cool-cv-card-body"></div>
+            <button type="button" id="cool-cv-card-ok" class="mt-1 px-3 py-1.5 text-sm font-medium rounded-md border-2 border-github-accent-emphasis dark:border-github-accent-dark text-github-accent-emphasis dark:text-github-accent-dark bg-white dark:bg-github-canvas-dark-subtle">Add it to the CV ↓ <span class="font-mono text-xs">(Enter / Space)</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Skills -->
-    <section class="mb-8">
+    <section class="mb-8" data-frag="proj">
       <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Skills</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
@@ -310,7 +321,7 @@
     </section>
 
     <!-- Work Experience -->
-    <section class="mb-8">
+    <section class="mb-8" data-frag="exp">
       <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Work Experience</h2>
       <div class="space-y-6">
         <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
@@ -420,7 +431,7 @@
     </section>
 
     <!-- Education -->
-    <section class="mb-8">
+    <section class="mb-8" data-frag="edu">
       <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Education</h2>
       <div class="space-y-4">
 
@@ -499,7 +510,7 @@
     </section>
 
     <!-- Projects -->
-    <section class="mb-8">
+    <section class="mb-8" data-frag="proj">
       <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Projects</h2>
       <div class="space-y-4">
         <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4 md:p-6">
@@ -587,7 +598,7 @@
     <!-- Certificates -->
 
     <!-- Publications -->
-    <section class="mb-8">
+    <section class="mb-8" data-frag="pub">
       <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Publications</h2>
       <div class="space-y-4">
         <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
@@ -658,7 +669,7 @@
     <!-- Volunteer -->
 
     <!-- Languages -->
-    <section class="mb-8">
+    <section class="mb-8" data-frag="edu">
       <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Languages</h2>
       <div class="flex flex-wrap gap-3">
         <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg px-4 py-2">
@@ -681,7 +692,7 @@
     </section>
 
     <!-- Interests -->
-    <section class="mb-8">
+    <section class="mb-8" data-frag="end">
       <h2 class="text-2xl font-bold mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">Interests</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="glass-tile bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle border border-github-border-default dark:border-github-border-dark rounded-lg p-4">
@@ -758,23 +769,67 @@
     });
   </script>
 
-  <!-- Cool CV game: a square window over the page, about a quarter of the screen, styled like the page -->
-  <div id="cool-cv-modal" class="fixed z-50 hidden flex-col rounded-md overflow-hidden shadow-xl border-2 border-github-border-default dark:border-github-border-dark bg-white dark:bg-github-canvas-dark"
-       style="right:16px; bottom:16px; width:min(66vh, calc(100vw - 32px)); height:calc(min(66vh, calc(100vw - 32px)) + 36px)" role="dialog" aria-label="Cool CV game">
-    <div class="flex items-center justify-between px-3 border-b-2 border-github-border-default dark:border-github-border-dark bg-github-canvas-subtle dark:bg-github-canvas-dark-subtle" style="height:36px">
-      <span class="text-sm font-medium text-github-fg-default dark:text-github-fg-dark" style="font-family:'JetBrains Mono',monospace">Cool CV</span>
-      <button type="button" id="cool-cv-close" class="px-2 py-0.5 text-xs font-medium rounded-md border-2 border-github-border-default dark:border-github-border-dark bg-white dark:bg-github-canvas-dark-subtle text-github-fg-default dark:text-github-fg-dark hover:border-github-accent-emphasis dark:hover:border-github-accent-dark" aria-label="Close game">Close ✕</button>
-    </div>
-    <iframe id="cool-cv-frame" title="Cool CV" class="w-full border-0 flex-1" allow="fullscreen"></iframe>
-  </div>
   <script>
+    // Cool CV: the game runs in the iframe and tells the page when a fragment is found (postMessage).
     (function () {
-      const modal = document.getElementById('cool-cv-modal'), frame = document.getElementById('cool-cv-frame');
-      const open = () => { if (!frame.getAttribute('src')) frame.src = 'cool-cv/index.html?theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light'); modal.classList.remove('hidden'); modal.classList.add('flex'); setTimeout(() => frame.focus(), 50); };
-      const close = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
-      document.getElementById('cool-cv-btn').addEventListener('click', open);
-      document.getElementById('cool-cv-close').addEventListener('click', close);
-      document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
+      const panel = document.getElementById('cool-cv-panel'), frame = document.getElementById('cool-cv-frame');
+      const card = document.getElementById('cool-cv-card'), box = document.getElementById('cool-cv-card-box');
+      const head = document.getElementById('cool-cv-card-head'), body = document.getElementById('cool-cv-card-body');
+      const sections = () => [...document.querySelectorAll('[data-frag]')];
+      let current = null; // the fragment shown in the card
+      const send = msg => { try { frame.contentWindow.postMessage(msg, location.origin); } catch (e) {} };
+      function openGame() {
+        sections().forEach(s => { s.classList.add('hidden'); s.style.opacity = ''; });
+        panel.classList.remove('hidden');
+        frame.src = 'cool-cv/index.html?embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => frame.focus(), 400);
+      }
+      function closeGame() { // always back to the whole CV, whatever the state of the game
+        card.classList.add('hidden'); card.classList.remove('flex'); current = null;
+        panel.classList.add('hidden'); frame.removeAttribute('src');
+        sections().forEach(s => { s.classList.remove('hidden'); s.style.opacity = ''; s.style.transition = ''; });
+      }
+      function showFragment(msg) {
+        current = msg;
+        head.textContent = `Fragment ${msg.n} / 4 found · ${msg.unlock}`;
+        body.innerHTML = '';
+        sections().filter(s => s.dataset.frag === msg.id).forEach(s => { const c = s.cloneNode(true); c.removeAttribute('data-frag'); c.classList.remove('hidden'); c.style.opacity = ''; body.appendChild(c); });
+        card.classList.remove('hidden'); card.classList.add('flex'); box.scrollTop = 0;
+        document.getElementById('cool-cv-card-ok').focus({ preventScroll: true });
+      }
+      function closeFragment() { // the card flies down into the page, where its sections appear
+        if (!current) return;
+        const msg = current; current = null;
+        const targets = sections().filter(s => s.dataset.frag === msg.id || (msg.last && s.dataset.frag === 'end'));
+        targets.forEach(s => { s.classList.remove('hidden'); s.style.opacity = '0'; });
+        const from = box.getBoundingClientRect(), to = targets[0].getBoundingClientRect();
+        const ghost = box.cloneNode(true); ghost.removeAttribute('id');
+        Object.assign(ghost.style, { position: 'fixed', left: from.left + 'px', top: from.top + 'px', width: from.width + 'px', height: from.height + 'px', margin: 0, zIndex: 60, transformOrigin: 'top left', transition: 'transform .75s cubic-bezier(.5,0,.75,0), opacity .75s ease-in', pointerEvents: 'none' });
+        document.body.appendChild(ghost);
+        card.classList.add('hidden'); card.classList.remove('flex');
+        const k = Math.min(1, to.width / from.width);
+        requestAnimationFrame(() => requestAnimationFrame(() => { ghost.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${k})`; ghost.style.opacity = '0.15'; }));
+        setTimeout(() => {
+          ghost.remove();
+          targets.forEach(s => { s.style.transition = 'opacity .5s ease-out'; s.style.opacity = '1'; });
+          if (msg.last) { closeGame(); targets[0] && document.querySelector('[data-frag]').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+          else { send({ type: 'coolcv:resume' }); frame.focus(); }
+        }, 780);
+      }
+      window.addEventListener('message', e => {
+        if (e.origin !== location.origin || !e.data || typeof e.data !== 'object') return;
+        if (e.data.type === 'coolcv:fragment') showFragment(e.data);
+        if (e.data.type === 'coolcv:close-card') closeFragment();
+      });
+      document.getElementById('cool-cv-btn').addEventListener('click', openGame);
+      document.getElementById('cool-cv-close').addEventListener('click', closeGame);
+      document.getElementById('cool-cv-card-ok').addEventListener('click', closeFragment);
+      document.addEventListener('keydown', e => {
+        if (panel.classList.contains('hidden')) return;
+        if (current && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); closeFragment(); }
+        else if (e.key === 'Escape') closeGame();
+      });
     })();
   </script>
 </body>
