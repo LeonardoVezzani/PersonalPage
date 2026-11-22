@@ -550,6 +550,9 @@ function updateParticles(dt) {
 }
 
 // ---------------------------------------------------------------- horn (or bark) and confetti
+const SFX = { honk: new Audio('assets/sfx/honk.mp3'), bark: new Audio('assets/sfx/bark.mp3') };
+Object.values(SFX).forEach(a => { a.preload = 'auto'; });
+function play(name, volume = 0.8) { try { const a = SFX[name].cloneNode(); a.volume = volume; a.play().catch(() => {}); } catch (e) {} }
 let audioCtx = null;
 function beep(freqs, dur, type, gain) {
   try {
@@ -572,10 +575,10 @@ function shout(origin, dir) {
 function honk() {
   const fwdDir = new THREE.Vector3(Math.sin(carYaw), 0, Math.cos(carYaw));
   if (dogState === 'aboard') { // the dog barks instead, and the lines come from the dog
-    beep([520], 0.12, 'sawtooth', 0.25); setTimeout(() => beep([480], 0.14, 'sawtooth', 0.25), 170);
+    play('bark');
     shout(dog.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.6, 0)), fwdDir); toast('Woof! Woof!');
   } else {
-    beep([392, 494], 0.45, 'square', 0.12);
+    play('honk', 0.6);
     shout(car.position.clone().addScaledVector(fwdDir, 4.6).add(new THREE.Vector3(0, 1.2, 0)), fwdDir); toast('Beep beep!');
   }
   for (const w of walkers) { // everyone nearby runs off
@@ -635,7 +638,7 @@ window.addEventListener('keyup', e => { keys[e.code] = false; });
 const fwd = () => keys.ArrowUp, back = () => keys.ArrowDown, left = () => keys.ArrowLeft, right = () => keys.ArrowRight;
 function toggleMode() {
   driveMode = driveMode === 'map' ? 'car' : 'map';
-  toast(driveMode === 'map' ? 'Map controls: arrows point the car' : 'Car controls: up = gas, left/right = steer');
+  toast(driveMode === 'map' ? 'Simplified controls: arrows point the crawler' : 'Car controls: ↑ gas, ↓ reverse, ← → steer');
 }
 const HELP = { map: 'Arrows: point and go · C: car controls', car: 'Up: gas · Down: reverse · Left/Right: steer · C: map controls' };
 
@@ -709,7 +712,7 @@ camLook.set(START[0], groundAt(...START), START[1]);
 // Driving is arcade: on the ground the controller sets the car's speed and turn rate directly,
 // so speed is the same in every direction and on every slope. Wheels only do the suspension.
 const VMAX = 16, VBACK = 8;
-let driveMode = 'map'; // 'map': arrows point the car on screen · 'car': up = throttle, left/right = steer
+let driveMode = 'car'; // 'car' (default): up = throttle, left/right = steer · 'map': simplified, arrows point the car on screen
 // The crawler: it always sits on its four wheels. Input sets a heading and a ground speed; the body's height,
 // pitch and roll come from the terrain under the wheels. Physics only stops it at houses and the border cliffs.
 let carYaw = Math.PI; // facing north

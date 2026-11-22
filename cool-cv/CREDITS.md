@@ -10,3 +10,5 @@ Code: Leonardo Vezzani. Libraries: three.js (MIT), cannon-es (MIT), in `vendor/`
 - `house.glb` — "House lowpoly" by rkmorello: https://sketchfab.com/3d-models/house-lowpoly-4b85ef1104fa4243ad46df0a87105aed
 
 License: https://creativecommons.org/licenses/by/4.0/
+
+Sound effects in `assets/sfx/`: car horn (`honk.mp3`) and dog bark (`bark.mp3`) by Dragon Studio.
