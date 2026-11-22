@@ -302,6 +302,8 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
     for (let k = 0, tries = 0; k < count && tries < 30 && n < 60; tries++) {
       seed++; const a = hash(seed, 3) * Math.PI * 2, d = 3.5 + hash(seed, 5) * 9, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = groundAt(x, z);
       if (!free(x, z, 12) || y < WATER_Y + 0.4) continue;
+      const scTry = (0.85 + hash(seed, 9) * 0.3) * 1.5;
+      if (SCENERY.houses.some(o => Math.hypot(x - o.x, z - o.z) < 1.6 * (o.sc + scTry) + 1)) continue; // keep a gap between houses
       const HOUSE_K = 1.5; // houses at 1.5x
       const sc = (0.85 + hash(seed, 9) * 0.3) * HOUSE_K, h = (0.8 + hash(seed, 11) * 0.4) * HOUSE_K, rot = hash(seed, 13) * Math.PI;
       Q.setFromAxisAngle(Y, rot);
@@ -344,7 +346,42 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
   const side = bx > 0 ? -1 : 1; // approach from the side that faces the middle of the board
   const route = [START, [bx + side * 40, bz + 26], [bx + side * 30, bz + 14], [bx + side * 20, bz + 7], [bx + side * 10, bz + 2], [bx, bz]]
     .map(([x, z]) => { const r = Math.hypot(x, z), m = rimAt(x, z) - 10; return r > m ? [x * m / r, z * m / r] : [x, z]; });
-  route[route.length - 1] = [bx, bz]; CARPET_ROUTE.length = 0; CARPET_ROUTE.push(...route); }
+  route[route.length - 1] = [bx, bz];
+  // keep the carpet out of the villages: plan the valley part on a grid (A*) around the houses,
+  // then follow the side approach up the mountain
+  const CELL = 2, HALFG = 122, NG = Math.ceil(2 * HALFG / CELL), CLEAR = 8;
+  const blocked = new Uint8Array(NG * NG), cellXZ = i => [-HALFG + (i % NG + 0.5) * CELL, -HALFG + (Math.floor(i / NG) + 0.5) * CELL];
+  for (let i = 0; i < NG * NG; i++) { const [x, z] = cellXZ(i);
+    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10) { blocked[i] = 1; continue; }
+    for (const hs of SCENERY.houses) if (Math.hypot(x - hs.x, z - hs.z) < CLEAR + hs.sc * 1.5) { blocked[i] = 1; break; } }
+  const idx = (x, z) => Math.max(0, Math.min(NG - 1, Math.floor((x + HALFG) / CELL))) + Math.max(0, Math.min(NG - 1, Math.floor((z + HALFG) / CELL))) * NG;
+  function astar(from, to) {
+    const s0 = idx(...from), g0 = idx(...to), gs = new Float32Array(NG * NG).fill(Infinity), came = new Int32Array(NG * NG).fill(-1), heap = [];
+    const [tx, tz] = cellXZ(g0), hf = i => { const [x, z] = cellXZ(i); return Math.hypot(x - tx, z - tz); };
+    const push = (i, f) => { heap.push([f, i]); let k = heap.length - 1; while (k > 0) { const pk = (k - 1) >> 1; if (heap[pk][0] <= heap[k][0]) break; [heap[pk], heap[k]] = [heap[k], heap[pk]]; k = pk; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+    gs[s0] = 0; push(s0, hf(s0));
+    while (heap.length) {
+      const [, c] = pop(); if (c === g0) break;
+      const cx = c % NG, cz = Math.floor(c / NG);
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dz) continue;
+        const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= NG || nz >= NG) continue; const n = nx + nz * NG; if (blocked[n] && n !== g0) continue;
+        const ng = gs[c] + Math.hypot(dx, dz) * CELL; if (ng < gs[n]) { gs[n] = ng; came[n] = c; push(n, ng + hf(n)); } }
+    }
+    if (came[g0] < 0) return [from, to];
+    const out = []; for (let c = g0; c >= 0; c = came[c]) out.push(cellXZ(c)); out.reverse(); out[0] = from; out[out.length - 1] = to; return out;
+  }
+  for (let w = 1; w < route.length - 1; w++) { // move any waypoint that falls next to a house to the nearest free spot
+    if (!blocked[idx(...route[w])]) continue;
+    let best = null; for (let r = CELL; r <= 16 && !best; r += CELL) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, x = route[w][0] + Math.cos(a) * r, z = route[w][1] + Math.sin(a) * r; if (!blocked[idx(x, z)]) { best = [x, z]; break; } }
+    if (best) route[w] = best;
+  }
+  let dense = [route[0]];
+  for (let w = 0; w < route.length - 1; w++) dense.push(...astar(route[w], route[w + 1]).slice(1)); // chain A* between the waypoints
+  for (let k = 0; k < 4; k++) for (let i = 1; i < dense.length - 1; i++) { // smooth, but never into a blocked cell
+    const a = dense[i - 1], c = dense[i + 1], q = dense[i], nx = (a[0] + q[0] * 2 + c[0]) / 4, nz = (a[1] + q[1] * 2 + c[1]) / 4;
+    if (!blocked[idx(nx, nz)]) { q[0] = nx; q[1] = nz; } }
+  CARPET_ROUTE.length = 0; CARPET_ROUTE.push(...dense); }
 const pickups = CV.map((p, k) => {
   const [x, z] = p.pos, y = groundAt(x, z);
   const g = new THREE.Group(); g.position.set(x, y, z);
@@ -551,7 +588,7 @@ function updateParticles(dt) {
 }
 
 // ---------------------------------------------------------------- horn (or bark) and confetti
-const SFX = { honk: new Audio('assets/sfx/honk.mp3'), bark: new Audio('assets/sfx/bark.mp3'), sheep: new Audio('assets/sfx/sheep.mp3'), person: new Audio('assets/sfx/person.mp3') };
+const SFX = { honk: new Audio('assets/sfx/honk.mp3'), bark: new Audio('assets/sfx/bark.mp3'), sheep: new Audio('assets/sfx/sheep.mp3'), person: new Audio('assets/sfx/person.mp3'), fanfare: new Audio('assets/sfx/fanfare.mp3') };
 Object.values(SFX).forEach(a => { a.preload = 'auto'; });
 function play(name, volume = 0.8) { try { const a = SFX[name].cloneNode(); a.volume = volume; a.play().catch(() => {}); } catch (e) {} }
 let audioCtx = null;
@@ -608,7 +645,7 @@ function confetti() {
     conf.setColorAt(i, c.set(cols[i % cols.length]));
   });
   conf.instanceColor.needsUpdate = true;
-  beep([523, 659, 784], 0.6, 'triangle', 0.15);
+  play('fanfare', 0.8); // victory
 }
 const cM = new THREE.Matrix4(), cQ = new THREE.Quaternion(), cE = new THREE.Euler(), cS = new THREE.Vector3(1, 1, 1), cP = new THREE.Vector3();
 function updateConfetti(dt) {
@@ -808,4 +845,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, world, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
