@@ -80,10 +80,15 @@ const DOG_WAIT_K = 1.3; // the waiting dog is 30% bigger
 const dogRing = new THREE.Mesh(new THREE.RingGeometry(0, 2.6, 40, 8).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); // orange disc under the waiting dog; it follows the slope (see below)
 dogRing.renderOrder = 2;
 
+// ---------------------------------------------------------------- phones
+// Phones get a lighter game: fewer particles and figures, cheaper shadows and pixels, and a slightly wider view.
+const MOBILE = (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) && Math.min(screen.width, screen.height) < 820;
+const FX = MOBILE ? 0.6 : 1; // particle budget
+const ZOOM = MOBILE ? 1.15 : 1; // 15% zoom out
 // ---------------------------------------------------------------- renderer & scene
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, MOBILE ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -163,11 +168,11 @@ const CAM_OFFSET = new THREE.Vector3(0, 1, 0.9).normalize().multiplyScalar(160);
 scene.add(new THREE.HemisphereLight(0xfff6e0, 0x6c6f2a, 1.0));
 const sun = new THREE.DirectionalLight(0xfff1cc, 2.0);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(MOBILE ? 1024 : 2048, MOBILE ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 300 });
 scene.add(sun, sun.target);
 
-function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); const a = w / h; camera.left = -VIEW * a; camera.right = VIEW * a; camera.top = VIEW; camera.bottom = -VIEW; camera.updateProjectionMatrix(); }
+function resize() { const w = window.innerWidth, h = window.innerHeight, v = VIEW * ZOOM; renderer.setSize(w, h, false); const a = w / h; camera.left = -v * a; camera.right = v * a; camera.top = v; camera.bottom = -v; camera.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
 
 // ---------------------------------------------------------------- terrain
@@ -518,6 +523,7 @@ const walkers = [];
   }
   const flocks = CV.map(c => [c.pos[0] + 7, c.pos[1] + 6]); // a few sheep near every CV page
   const spots = [[100, 30], [120, 36], [200, 30], [260, 40], [300, 26], [40, 40], [160, 20], [340, 44], [80, 44], [235, 44], [10, 28], [280, 36]];
+  let popCount = 0;
   [...spots.map(([deg, r]) => polar(deg, r)), ...flocks].forEach((home, i) => {
     const isSheep = i >= spots.length || i % 3 !== 0;
     const count = isSheep ? 3 : 1;
@@ -525,6 +531,7 @@ const walkers = [];
       const g = isSheep ? sheep() : person([PAL.wall, 0x566c8d, PAL.roof, PAL.olive][i % 4]);
       const x = home[0] + (k - 1) * 3, z = home[1] + (k % 2) * 3;
       if (groundAt(x, z) < WATER_Y + 0.6) continue; // never start in the lake
+      if (MOBILE && ++popCount % 10 === 0) continue; // phones: one figure in ten fewer
       g.position.set(x, groundAt(x, z), z); scene.add(g);
       walkers.push({ g, home, homeY: groundAt(...home), speed: isSheep ? 1.4 : 2.4, target: [x, z], wait: Math.random() * 2, knocked: 0, kind: isSheep ? 'sheep' : 'person' });
     }
@@ -573,7 +580,7 @@ function updateWalkers(dt, t) {
 }
 
 // ---------------------------------------------------------------- dust, splashes and snow behind the wheels
-const PARTS = 320, parts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshBasicMaterial({ color: 0xffffff }), PARTS);
+const PARTS = Math.round(320 * FX), parts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.45, 0.45, 0.45), new THREE.MeshBasicMaterial({ color: 0xffffff }), PARTS);
 parts.instanceMatrix.setUsage(THREE.DynamicDrawUsage); parts.frustumCulled = false; scene.add(parts);
 const pState = Array.from({ length: PARTS }, () => ({ life: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, s: 1 }));
 let pNext = 0, partsWasAlive = false; const wheelW = new CANNON.Vec3();
@@ -588,7 +595,7 @@ for (let i = 0; i < PARTS; i++) { parts.setMatrixAt(i, tmpM.makeScale(0, 0, 0));
 function updateParticles(dt) {
   const v = chassisBody.velocity, sp = Math.hypot(v.x, v.z);
   if (sp > 3 && started) {
-    const fx = Math.sin(carYaw), fz = Math.cos(carYaw), n = sp > 10 ? 3 : 2;
+    const fx = Math.sin(carYaw), fz = Math.cos(carYaw), n = Math.random() < FX ? (sp > 10 ? 3 : 2) : 1;
     for (const wi of [2, 3]) for (let k = 0; k < n; k++) { // rear wheels
       const wp = chassisBody.pointToWorldFrame(WHEELS[wi], wheelW), surf = surfaceAt(wp.x, wp.z), q = pState[pNext];
       q.life = 0.5 + Math.random() * 0.4; q.x = wp.x - fx * WHEEL_R; q.z = wp.z - fz * WHEEL_R; q.y = groundAt(wp.x, wp.z) + 0.3;
@@ -609,7 +616,7 @@ function updateParticles(dt) {
   if (alive || partsWasAlive) parts.instanceMatrix.needsUpdate = true; partsWasAlive = alive;
 }
 
-function burst(x, y, z, n = 46) { // the little red explosion when a CV page is picked up
+function burst(x, y, z, n = Math.round(46 * FX)) { // the little red explosion when a CV page is picked up
   const cols = [0xcf222e, 0xff5a5f, 0xff8a8a, 0xffffff];
   for (let k = 0; k < n; k++) {
     const q = pState[pNext], a = Math.random() * Math.PI * 2, sp = 3 + Math.random() * 6;
@@ -669,7 +676,7 @@ function updateShouts(dt) {
   }
 }
 // confetti for the last fragment
-const CONF = 260, conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.7, 0.45), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), CONF);
+const CONF = Math.round(260 * FX), conf = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.7, 0.45), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), CONF);
 conf.instanceMatrix.setUsage(THREE.DynamicDrawUsage); conf.frustumCulled = false; scene.add(conf);
 const cState = Array.from({ length: CONF }, () => ({ life: 0 }));
 { const m = new THREE.Matrix4().makeScale(0, 0, 0), c = new THREE.Color(); for (let i = 0; i < CONF; i++) { conf.setMatrixAt(i, m); conf.setColorAt(i, c.set(0xffffff)); } }
@@ -794,18 +801,19 @@ function collect(p) {
 const ACH_SECS = 4.2, NEW_NAMES = ['Map and speedometer', 'Pedestrian highlight', 'Directions'];
 let pendingUnlock = null;
 function updateUnlocks(t) {
-  if (!pendingUnlock || t < pendingUnlock.at || chassisBody.velocity.length() < 1) return;
-  const n = pendingUnlock.n; pendingUnlock = null;
-  if (n === 1) { hudOn.speed = hudOn.map = true; popIn($('minimap')); popIn(speedEl); }
-  if (n === 2) showBoxes(t);
-  if (n === 3) { carpetOn = true; carpetT0 = t; pickups[3].group.visible = true; }
-  newAddition(NEW_NAMES[n - 1]);
+  if (!pendingUnlock) return;
+  const u = pendingUnlock;
+  if (!u.bubble && t >= u.at + 0.3) { u.bubble = true; newAddition(NEW_NAMES[u.n - 1]); } // 0.3 s after the banner has gone
+  if (!u.done && u.bubble && chassisBody.velocity.length() > 1) { // …and the unlock itself once the crawler moves
+    u.done = t;
+    if (u.n === 1) { hudOn.speed = hudOn.map = true; popIn($('minimap')); popIn(speedEl); }
+    if (u.n === 2) showBoxes(t);
+    if (u.n === 3) { carpetOn = true; carpetT0 = t; pickups[3].group.visible = true; }
+  }
+  if (u.done && t >= u.done + 0.5) { $('newAdd').style.display = 'none'; newShown = false; pendingUnlock = null; } // the bubble stays 0.5 s more
 }
-let newTimer, newShown = false; // the blue bubble above the crawler: "New addition!" and what just arrived
-function newAddition(name) {
-  const el = $('newAdd'); $('newName').textContent = name; newShown = true; popIn(el);
-  clearTimeout(newTimer); newTimer = setTimeout(() => { el.style.display = 'none'; newShown = false; }, 3800);
-}
+let newShown = false; // the blue bubble above the crawler: "New addition!" and what is about to arrive
+function newAddition(name) { $('newName').textContent = name; newShown = true; popIn($('newAdd')); }
 const nAbove = new THREE.Vector3();
 function placeNewAddition() {
   if (!newShown) return;
