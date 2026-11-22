@@ -127,7 +127,7 @@ function groundAt(x, z) { // bilinear on the samples, matches the meshes closely
 }
 
 // ---------------------------------------------------------------- physics world
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -20, 0) });
+const world = new CANNON.World({ gravity: new CANNON.Vec3(0, 0, 0) }); // the crawler never leaves the ground
 world.broadphase = new CANNON.SAPBroadphase(world);
 world.defaultContactMaterial.friction = 0.3;
 // The terrain has no collider: the car rides on it through groundAt() (see control()).
@@ -164,6 +164,7 @@ const chassisBody = new CANNON.Body({ mass: 320, angularDamping: 0.5, linearDamp
 chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(2.0, 1.0, 3.6))); // only meets the border cliffs
 chassisBody.position.set(START[0], groundAt(...START) + 4, START[1]);
 chassisBody.quaternion.setFromEuler(0, Math.PI, 0); // face north
+chassisBody.fixedRotation = true; chassisBody.updateMassProperties(); // orientation comes from the terrain, not from collisions
 world.addBody(chassisBody);
 const RIDE = 2.55; // height of the car's centre above the ground when it sits on its wheels
 const WHEELS = [[2.1, 2.7], [-2.1, 2.7], [2.1, -2.7], [-2.1, -2.7]].map(([x, z]) => new CANNON.Vec3(x, -1.3, z));
@@ -187,7 +188,7 @@ const wheelMeshes = WHEELS.map(() => {
 });
 
 // ---------------------------------------------------------------- scenery
-// Houses and trees stand in small groups and are solid; a few loose trees are not.
+// Houses stand in small solid groups; trees (in groves and loose) can be driven through.
 {
   const keepClear = [START, DOG_POS, ...CV.map(c => c.pos)];
   const free = (x, z, r) => inside(x, z) && Math.hypot(x, z) < edgeR(Math.atan2(z, x)) - 8 && keepClear.every(([px, pz]) => Math.hypot(x - px, z - pz) > r) && Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.r * 1.3;
@@ -215,7 +216,7 @@ const wheelMeshes = WHEELS.map(() => {
     }
   }
   walls.count = roofs.count = n; walls.castShadow = roofs.castShadow = true; walls.receiveShadow = true; scene.add(walls, roofs);
-  // groves (solid) and loose trees (not solid)
+  // groves and loose trees, no colliders
   const trees = new THREE.InstancedMesh(new THREE.ConeGeometry(0.9, 2.6, 6), new THREE.MeshLambertMaterial({ color: 0x2f6b2f, flatShading: true }), 220);
   let t = 0;
   const GROVES = [[20, 18], [80, 20], [110, 45], [150, 55], [200, 18], [230, 48], [280, 22], [320, 70], [100, 72], [355, 30]];
@@ -225,7 +226,6 @@ const wheelMeshes = WHEELS.map(() => {
       seed++; const a = hash(seed, 17) * Math.PI * 2, d = Math.sqrt(hash(seed, 19)) * 7, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = groundAt(x, z);
       if (!free(x, z, 11) || y < WATER_Y + 0.5) continue;
       const sc = 0.9 + hash(seed, 23) * 0.6; M.makeScale(sc, sc, sc).setPosition(x, y + 1.2 * sc, z); trees.setMatrixAt(t++, M);
-      solid(x, y, z, 0.45 * sc, 1.6 * sc, 0.45 * sc, 0);
       k++;
     }
   }
@@ -330,7 +330,7 @@ function updateCarpet(t) {
 // ---------------------------------------------------------------- input
 const keys = {};
 const GAME_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyR', 'KeyC'];
-window.addEventListener('keydown', e => { if (GAME_KEYS.includes(e.code)) e.preventDefault(); if (!keys[e.code] && (e.code === 'Space' || e.code === 'KeyR') && started && !cardOpen) jump(); if (!keys[e.code] && e.code === 'KeyC') toggleMode(); keys[e.code] = true; if (cardOpen && (e.code === 'Enter' || e.code === 'Escape')) closeCard(); });
+window.addEventListener('keydown', e => { if (GAME_KEYS.includes(e.code)) e.preventDefault(); if (!keys[e.code] && e.code === 'KeyC') toggleMode(); keys[e.code] = true; if (cardOpen && (e.code === 'Enter' || e.code === 'Escape')) closeCard(); });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 const fwd = () => keys.KeyW || keys.ArrowUp, back = () => keys.KeyS || keys.ArrowDown, left = () => keys.KeyA || keys.ArrowLeft, right = () => keys.KeyD || keys.ArrowRight;
 function toggleMode() {
@@ -338,19 +338,8 @@ function toggleMode() {
   document.getElementById('help').textContent = HELP[driveMode];
   toast(driveMode === 'map' ? 'Map controls: arrows point the car' : 'Car controls: up = gas, left/right = steer');
 }
-const HELP = { map: 'Arrows: point and go · Space: jump / back on wheels · in the air, arrows: flips · C: car controls',
-  car: 'Up: gas · Down: reverse · Left/Right: steer · Space: jump / back on wheels · C: map controls' };
-function jump() { // Space: hop, or back on the wheels when lying on the side or the roof
-  const p = chassisBody.position, up = chassisBody.quaternion.vmult(new CANNON.Vec3(0, 1, 0));
-  if (crashed || up.y < 0.35) { resetCar(); chassisBody.velocity.y = 7; jumpT = 0.3; return; }
-  if (p.y - groundAt(p.x, p.z) - RIDE < 0.8) { chassisBody.velocity.y += 14; jumpT = 0.3; }
-}
-function resetCar() {
-  const p = chassisBody.position, e = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...chassisBody.quaternion.toArray()), 'YXZ');
-  chassisBody.position.set(p.x, groundAt(p.x, p.z) + RIDE + 0.5, p.z);
-  chassisBody.quaternion.setFromEuler(0, e.y, 0, 'YXZ');
-  chassisBody.velocity.setZero(); chassisBody.angularVelocity.setZero(); crashed = false;
-}
+const HELP = { map: 'Arrows: point and go · C: car controls', car: 'Up: gas · Down: reverse · Left/Right: steer · C: map controls' };
+
 
 // ---------------------------------------------------------------- HUD
 const $ = id => document.getElementById(id);
@@ -410,64 +399,46 @@ camLook.set(START[0], groundAt(...START), START[1]);
 // Driving is arcade: on the ground the controller sets the car's speed and turn rate directly,
 // so speed is the same in every direction and on every slope. Wheels only do the suspension.
 const VMAX = 16, VBACK = 8;
-let jumpT = 0; // after a jump, the ground controller lets go for a moment
 let driveMode = 'map'; // 'map': arrows point the car on screen · 'car': up = throttle, left/right = steer
-let crashed = false; // landed on the side or the roof: Space puts it back
+// The crawler: it always sits on its four wheels. Input sets a heading and a ground speed; the body's height,
+// pitch and roll come from the terrain under the wheels. Physics only stops it at houses and the border cliffs.
+let carYaw = Math.PI; // facing north
 function control(h) {
-  const live = started && !cardOpen && !crashed;
-  const p = chassisBody.position, q = chassisBody.quaternion, up = q.vmult(new CANNON.Vec3(0, 1, 0)), f = q.vmult(new CANNON.Vec3(0, 0, 1));
-  const g0 = groundAt(p.x, p.z), gap = p.y - (g0 + RIDE);
-  const e = 1.5, nAt = (x, z) => new CANNON.Vec3(groundAt(x - e, z) - groundAt(x + e, z), 2 * e, groundAt(x, z - e) - groundAt(x, z + e)).unit();
-  const dir = Math.sign(chassisBody.velocity.dot(f)) || 1;
-  const nrm = nAt(p.x, p.z).vadd(nAt(p.x + f.x * 3 * dir, p.z + f.z * 3 * dir)); nrm.normalize();
-  jumpT -= h;
-  if (crashed) { // lying on the ground: stay there until Space
-    if (p.y < g0 + 1.6) { p.y = g0 + 1.6; chassisBody.velocity.setZero(); chassisBody.angularVelocity.scale(0.8, chassisBody.angularVelocity); }
-    return;
-  }
-  if (gap > 0.3 || jumpT > 0) { // in the air
-    if (live) { // flips and barrel rolls
-      const rx = q.vmult(new CANNON.Vec3(1, 0, 0)), pitch = (fwd() ? 1 : 0) - (back() ? 1 : 0), roll = (right() ? 1 : 0) - (left() ? 1 : 0);
-      chassisBody.angularVelocity.vadd(rx.scale(pitch * 6 * h), chassisBody.angularVelocity);
-      chassisBody.angularVelocity.vadd(f.scale(roll * 6 * h), chassisBody.angularVelocity);
-    }
-    return;
-  }
-  if (up.dot(nrm) < 0.3) { crashed = true; chassisBody.velocity.setZero(); toast('Oops! Press Space to get back on your wheels'); return; }
-  // on the ground: sit on the terrain, whatever the slope
-  if (gap < 0) p.y = g0 + RIDE;
+  const live = started && !cardOpen;
   let speed = 0, yawRate = 0;
-  const ft = f.vsub(nrm.scale(f.dot(nrm))); ft.normalize();
   if (live && driveMode === 'map') {
     const ix = (right() ? 1 : 0) - (left() ? 1 : 0), iz = (back() ? 1 : 0) - (fwd() ? 1 : 0);
     if (ix || iz) {
-      let err = Math.atan2(ix, iz) - Math.atan2(ft.x, ft.z); while (err > Math.PI) err -= 2 * Math.PI; while (err < -Math.PI) err += 2 * Math.PI;
-      yawRate = Math.max(-6, Math.min(6, err * 9));                                  // spin on the spot towards the arrow…
-      speed = Math.abs(err) < 0.25 ? VMAX : Math.abs(err) < 0.7 ? VMAX * 0.35 : 0;    // …then go, always at the same speed
+      let err = Math.atan2(ix, iz) - carYaw; while (err > Math.PI) err -= 2 * Math.PI; while (err < -Math.PI) err += 2 * Math.PI;
+      yawRate = Math.max(-4, Math.min(4, err * 8));                                   // turn on the spot towards the arrow…
+      speed = Math.abs(err) < 0.25 ? VMAX : Math.abs(err) < 0.7 ? VMAX * 0.35 : 0;     // …then crawl, always at the same speed
     }
   } else if (live) {
     speed = fwd() ? VMAX : back() ? -VBACK : 0;
-    yawRate = ((left() ? 1 : 0) - (right() ? 1 : 0)) * 2.6 * (speed < 0 ? -1 : 1);
+    yawRate = ((left() ? 1 : 0) - (right() ? 1 : 0)) * 2.2 * (speed < 0 ? -1 : 1);
   }
-  // velocity along the ground only: same speed uphill, downhill and on the flat; over a crest the car takes off
-  const v = chassisBody.velocity, vt = v.vsub(nrm.scale(v.dot(nrm)));
-  vt.vadd(ft.scale(speed).vsub(vt).scale(Math.min(1, 12 * h)), vt); chassisBody.velocity.copy(vt);
-  chassisBody.applyForce(new CANNON.Vec3(0, 20 * chassisBody.mass, 0)); // gravity is handled by sitting on the ground
-  // turn rate around the ground normal, and keep the car flat on the ground
-  const w = chassisBody.angularVelocity, yawNow = w.dot(nrm), tilt = w.vsub(nrm.scale(yawNow));
-  const yawNew = yawNow + (yawRate - yawNow) * Math.min(1, 15 * h);
-  chassisBody.angularVelocity.copy(nrm.scale(yawNew).vadd(tilt.scale(Math.exp(-8 * h))).vadd(up.cross(nrm).scale(18 * h)));
+  carYaw += yawRate * h;
+  const v = chassisBody.velocity, k = Math.min(1, 14 * h);
+  v.x += (Math.sin(carYaw) * speed - v.x) * k; v.z += (Math.cos(carYaw) * speed - v.z) * k; v.y = 0;
+  chassisBody.angularVelocity.setZero();
 }
+function settleOnWheels() { // height, pitch and roll from the ground under the four wheels
+  const p = chassisBody.position, c = Math.cos(carYaw), sn = Math.sin(carYaw);
+  const at = (lx, lz) => groundAt(p.x + lx * c + lz * sn, p.z - lx * sn + lz * c);
+  const fl = at(2.1, 2.7), fr = at(-2.1, 2.7), bl = at(2.1, -2.7), br = at(-2.1, -2.7);
+  p.y = (fl + fr + bl + br) / 4 + RIDE;
+  const pitch = Math.atan2((bl + br) / 2 - (fl + fr) / 2, 5.4), roll = Math.atan2((fl + bl) / 2 - (fr + br) / 2, 4.2);
+  chassisBody.quaternion.setFromEuler(pitch, carYaw, roll, 'YXZ');
+  return [fl, fr, bl, br];
+}
+let wheelGround = [0, 0, 0, 0];
 world.addEventListener("preStep", () => control(world.dt));
 
 function step(dt) {
   world.step(1 / 60, dt, 4);
-  const cp = chassisBody.position, onGround = !crashed && cp.y - groundAt(cp.x, cp.z) - RIDE < 0.3;
-  if (onGround && cp.y > OUTSIDE_Y + 3) { safeT += dt; if (safeT > 1) { safeT = 0; lastSafe.copy(cp); } }
-  if (cp.y < OUTSIDE_Y + 1) { chassisBody.position.set(lastSafe.x, groundAt(lastSafe.x, lastSafe.z) + RIDE + 1, lastSafe.z); chassisBody.velocity.setZero(); chassisBody.angularVelocity.setZero(); crashed = false; toast("That's the edge of the world. Back you go!"); }
+  wheelGround = settleOnWheels();
 }
 let wheelSpin = 0;
-let safeT = 0; const lastSafe = new CANNON.Vec3(START[0], 0, START[1]);
 
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
@@ -476,7 +447,7 @@ function frame() {
   car.position.copy(chassisBody.position); car.quaternion.copy(chassisBody.quaternion);
   wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(new CANNON.Vec3(0, 0, 1))) * dt / 1.24;
   const spinQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), wheelSpin);
-  WHEELS.forEach((loc, i) => { const wp = chassisBody.pointToLocalFrame ? chassisBody.pointToWorldFrame(loc, new CANNON.Vec3()) : loc; wheelMeshes[i].position.set(wp.x, wp.y, wp.z); wheelMeshes[i].quaternion.copy(car.quaternion).multiply(spinQ); });
+  WHEELS.forEach((loc, i) => { const wp = chassisBody.pointToWorldFrame(loc, new CANNON.Vec3()); wheelMeshes[i].position.set(wp.x, wheelGround[i] + 1.24, wp.z); wheelMeshes[i].quaternion.copy(car.quaternion).multiply(spinQ); }); // each wheel sits on the ground under it
   // camera: fixed isometric angle, follows the car smoothly
   camLook.lerp(car.position, 1 - Math.exp(-dt * 5));
   camera.position.copy(camLook).add(CAM_OFFSET); camera.lookAt(camLook);
@@ -522,4 +493,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, world, jump, chassisBody, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, world, chassisBody, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
