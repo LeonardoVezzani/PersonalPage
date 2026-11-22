@@ -460,7 +460,7 @@ const mmBase = (() => { // pre-render the minimap terrain
     const x = x0 + (x1 - x0) * px / 149, z = z0 + (z1 - z0) * py / 189, y = groundAt(x, z), o = (px + py * 150) * 4;
     if (!inside(x, z) || Math.hypot(x, z) > edgeR(Math.atan2(z, x)) - 2) continue;
     const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 2.2 ? [150, 190, 95] : y < 6 ? [95, 145, 60] : y < 15 ? [140, 130, 120] : [240, 240, 240];
-    img.data.set([r, gg, b, 200], o);
+    img.data.set([r, gg, b, 245], o);
   }
   g.putImageData(img, 0, 0); return { c, x0, x1, z0, z1 };
 })();
@@ -469,7 +469,7 @@ function drawMinimap(heading) {
   const toM = (x, z) => [(x - x0) / (x1 - x0) * 149, (z - z0) / (z1 - z0) * 189];
   for (const p of pickups) { if (p.got || !p.group.visible) continue; const [mx, my] = toM(...p.pos); mm.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); mm.fillRect(mx - 3, my - 3, 6, 6); }
   const [cx, cy] = toM(chassisBody.position.x, chassisBody.position.z);
-  mm.save(); mm.translate(cx, cy); mm.rotate(-heading); mm.fillStyle = '#ff3b30'; mm.beginPath(); mm.moveTo(0, -6); mm.lineTo(4, 4); mm.lineTo(-4, 4); mm.closePath(); mm.fill(); mm.restore();
+  mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#ff3b30'; mm.beginPath(); mm.moveTo(0, -6); mm.lineTo(4, 4); mm.lineTo(-4, 4); mm.closePath(); mm.fill(); mm.restore();
 }
 
 function collect(p) {
