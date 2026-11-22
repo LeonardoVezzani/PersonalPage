@@ -19,7 +19,7 @@ const toXZraw = (lon, lat) => [(lon - LON0) * 157.2, -(lat - LAT0) * 222];
 const toXZ = (lon, lat) => { const [x, z] = toXZraw(lon, lat); return [x * MS, z * MS]; };
 
 const SIZE = 280;          // world size (square)
-const N = 257;             // samples per side
+const N = 121;             // samples per side: big flat facets, abstract look
 const ES = SIZE / (N - 1); // element size
 const HALF = SIZE / 2;
 const WATER_Y = 0.45;
@@ -57,19 +57,20 @@ const ALPS = P([[7.75, 44.12], [7.3, 44.14], [6.95, 44.3], [6.98, 44.62], [6.75,
 const APENNINES = P([[7.95, 44.22], [8.4, 44.42], [8.8, 44.55], [9.25, 44.65]]);
 // valleys: polyline, floor height at mouth and at head, half width
 const VALLEYS = [
-  { name: 'Val di Susa', pl: P([[7.55, 45.08], [7.4, 45.08], [7.25, 45.11], [7.05, 45.14], [6.93, 45.25]]), f0: 1.2, f1: 20, w: 15 },
-  { name: 'Alta Val di Susa', pl: P([[7.05, 45.14], [6.88, 45.03], [6.75, 44.94]]), f0: 6, f1: 22, w: 11 },
-  { name: 'Valli di Lanzo', pl: P([[7.6, 45.2], [7.48, 45.27], [7.39, 45.31]]), f0: 1.2, f1: 5, w: 12 },
-  { name: 'Val Grande', pl: P([[7.39, 45.31], [7.3, 45.35], [7.2, 45.37]]), f0: 5, f1: 16, w: 9 },
-  { name: "Val d'Ala", pl: P([[7.39, 45.31], [7.3, 45.30], [7.2, 45.30], [7.13, 45.31]]), f0: 5, f1: 14, w: 9 },
-  { name: 'Val di Viù', pl: P([[7.47, 45.27], [7.36, 45.25], [7.22, 45.23]]), f0: 3, f1: 14, w: 9 },
-  { name: 'Valle Po', pl: P([[7.4, 44.68], [7.2, 44.69], [7.1, 44.69]]), f0: 1.2, f1: 16, w: 10 },
-  { name: 'Valle Stura', pl: P([[7.55, 44.38], [7.3, 44.32], [7.0, 44.36]]), f0: 1.4, f1: 16, w: 10 },
-  { name: 'Valle Dora', pl: P([[7.88, 45.45], [7.75, 45.6], [7.55, 45.72], [7.3, 45.75]]), f0: 1.4, f1: 12, w: 13 },
-  { name: 'Val Sesia', pl: P([[8.25, 45.6], [8.15, 45.78], [7.95, 45.88]]), f0: 1.6, f1: 14, w: 10 },
-  { name: "Val d'Ossola", pl: P([[8.5, 45.92], [8.35, 46.05], [8.28, 46.2]]), f0: 1.2, f1: 10, w: 13 },
+  { name: 'Val di Susa', pl: P([[7.55, 45.08], [7.4, 45.08], [7.25, 45.11], [7.05, 45.14], [6.93, 45.25]]), f0: 1.2, f1: 20, w: 27 },
+  { name: 'Alta Val di Susa', pl: P([[7.05, 45.14], [6.88, 45.03], [6.75, 44.94]]), f0: 6, f1: 22, w: 20 },
+  { name: 'Valli di Lanzo', pl: P([[7.6, 45.2], [7.48, 45.27], [7.39, 45.31]]), f0: 1.2, f1: 5, w: 22 },
+  { name: 'Val Grande', pl: P([[7.39, 45.31], [7.3, 45.35], [7.2, 45.37]]), f0: 5, f1: 16, w: 16 },
+  { name: "Val d'Ala", pl: P([[7.39, 45.31], [7.3, 45.30], [7.2, 45.30], [7.13, 45.31]]), f0: 5, f1: 14, w: 16 },
+  { name: 'Val di Viù', pl: P([[7.47, 45.27], [7.36, 45.25], [7.22, 45.23]]), f0: 3, f1: 14, w: 16 },
+  { name: 'Valle Po', pl: P([[7.4, 44.68], [7.2, 44.69], [7.1, 44.69]]), f0: 1.2, f1: 16, w: 18 },
+  { name: 'Valle Stura', pl: P([[7.55, 44.38], [7.3, 44.32], [7.0, 44.36]]), f0: 1.4, f1: 16, w: 18 },
+  { name: 'Valle Dora', pl: P([[7.88, 45.45], [7.75, 45.6], [7.55, 45.72], [7.3, 45.75]]), f0: 1.4, f1: 12, w: 23 },
+  { name: 'Val Sesia', pl: P([[8.25, 45.6], [8.15, 45.78], [7.95, 45.88]]), f0: 1.6, f1: 14, w: 18 },
+  { name: "Val d'Ossola", pl: P([[8.5, 45.92], [8.35, 46.05], [8.28, 46.2]]), f0: 1.2, f1: 10, w: 23 },
 ];
-const PEAKS = [[7.093, 44.667, 22, 9], [7.867, 45.937, 24, 11], [7.077, 45.203, 10, 6], [7.10, 45.335, 9, 5], [6.95, 44.45, 10, 9]].map(([lo, la, h, r]) => { const [x, z] = toXZraw(lo, la); return { x, z, h, r }; });
+const SUMMIT_LL = [7.16, 45.335]; // Uja di Ciamarella, Valli di Lanzo: the last CV piece sits on top
+const PEAKS = [[7.093, 44.667, 20, 16], [7.867, 45.937, 22, 18], [7.077, 45.203, 9, 10], [...SUMMIT_LL, 36, 11], [6.95, 44.45, 10, 14]].map(([lo, la, h, r]) => { const [x, z] = toXZraw(lo, la); return { x, z, h, r }; });
 const PO = P([[7.1, 44.7], [7.4, 44.76], [7.6, 44.95], [7.69, 45.05], [7.95, 45.15], [8.4, 45.15], [8.7, 45.05], [9.3, 45.1]]);
 const LAKE = (() => { const [x, z] = toXZraw(8.58, 45.95); return { x, z, rx: 9, rz: 38 }; })();
 const HILLS = [[8.05, 44.6, 55, 7], [8.3, 45.05, 45, 6], [7.78, 45.08, 12, 5]].map(([lo, la, r, h]) => { const [x, z] = toXZraw(lo, la); return { x, z, r, h }; });
@@ -95,14 +96,14 @@ const RIVER = new Set(); // vertex flags for coloring, filled while sampling
 function height(x, z) { return heightRaw(x / MS, z / MS); }
 function heightRaw(x, z) {
   if (!inside(x, z)) return OUTSIDE_Y;
-  let h = 1.0 + fbm(x * 0.02, z * 0.02, 3) * 0.8;
+  let h = 1.0 + fbm(x * 0.008, z * 0.008, 2) * 0.6;
   const dA = distSegs(x, z, ALP_SEGS), dP = distSegs(x, z, APP_SEGS);
-  h += Math.pow(1 - smooth(0, 95, dA), 1.35) * (24 + 18 * ridge(x * 0.018, z * 0.018));
-  h += Math.pow(1 - smooth(0, 50, dP), 1.4) * (8 + 7 * ridge(x * 0.03 + 7, z * 0.03));
-  for (const H of HILLS) { const d = Math.hypot(x - H.x, z - H.z); const m = 1 - smooth(H.r * 0.4, H.r, d); h += m * H.h * (0.45 + fbm(x * 0.07, z * 0.07, 3)); }
+  h += Math.pow(1 - smooth(0, 125, dA), 1.25) * (22 + 10 * ridge(x * 0.008, z * 0.008));
+  h += Math.pow(1 - smooth(0, 65, dP), 1.3) * (7 + 4 * ridge(x * 0.014 + 7, z * 0.014));
+  for (const H of HILLS) { const d = Math.hypot(x - H.x, z - H.z); const m = 1 - smooth(H.r * 0.4, H.r, d); h += m * H.h * (0.6 + 0.5 * fbm(x * 0.025, z * 0.025, 2)); }
   for (const V of VALLEYS) {
     const [d, t] = distToPolyline(x, z, V.pl);
-    if (d < V.w) { const floor = V.f0 + (V.f1 - V.f0) * t + fbm(x * 0.05, z * 0.05, 2) * 0.6; const s = smooth(V.w * 0.35, V.w, d); h = Math.min(h, floor + (h - floor) * s); }
+    if (d < V.w) { const floor = V.f0 + (V.f1 - V.f0) * t; const s = smooth(V.w * 0.35, V.w, d); h = Math.min(h, floor + (h - floor) * s); }
   }
   for (const K of PEAKS) { const d = Math.hypot(x - K.x, z - K.z); h += K.h * Math.exp(-(d * d) / (2 * K.r * K.r)); }
   const [dPo] = distToPolyline(x, z, PO);
@@ -124,16 +125,16 @@ const XZ = name => toXZ(...PLACES[name]);
 
 // ---------------------------------------------------------------- CV content
 const CV = [
-  { id: 'edu', title: 'Education & languages', where: 'Politecnico di Torino', pos: toXZ(7.66, 45.062), color: 0x2f81f7, unlock: 'Speedometer unlocked',
+  { id: 'edu', title: 'Education & languages', where: 'Novara', pos: XZ('Novara'), color: 0x2f81f7, unlock: 'Speedometer unlocked',
     html: `<ul><li><b>PhD, Computer Engineering</b> · Politecnico di Torino · 2022 – present</li><li><b>MSc, Cinema and Multimedia Engineering</b> · PoliTO · 2019 – 2022<br><span style="opacity:.75">Thesis: locomotion interface for VR based on seat pressure mapping</span></li><li><b>BSc, Cinema and Multimedia Engineering</b> · PoliTO · 2015 – 2019</li><li>CIFIS · 24 CFU teacher training · 2021</li></ul><p><b>Languages:</b> Italian (native) · English (C1) · French (A2) · Spanish (A1)</p>` },
-  { id: 'proj', title: 'Projects & skills', where: 'Asti', pos: XZ('Asti'), color: 0xd29922, unlock: 'Altimeter & compass unlocked',
-    html: `<ul><li><b>HoloACLS</b> – AR training for medical first responders (HoloLens 2)</li><li><b>Virtual Tour, Museo Paleontologico di Asti</b> – yes, this one is right here</li><li><b>S3lf</b> – VR storytelling with the National Film Board of Canada</li><li><b>Nexa City</b> – platform on digital rights, Nexa Center for Internet &amp; Society</li></ul><p><b>Skills:</b> experimental design, user research, prototyping, data analysis · project coordination, partnerships, teaching · Unity, Unreal Engine, CARLA, ROS2, Python · AR/VR/XR</p>` },
+  { id: 'proj', title: 'Projects & skills', where: 'Cuneo', pos: XZ('Cuneo'), color: 0xd29922, unlock: 'Altimeter & compass unlocked',
+    html: `<ul><li><b>HoloACLS</b> – AR training for medical first responders (HoloLens 2)</li><li><b>Virtual Tour, Museo Paleontologico di Asti</b></li><li><b>S3lf</b> – VR storytelling with the National Film Board of Canada</li><li><b>Nexa City</b> – platform on digital rights, Nexa Center for Internet &amp; Society</li></ul><p><b>Skills:</b> experimental design, user research, prototyping, data analysis · project coordination, partnerships, teaching · Unity, Unreal Engine, CARLA, ROS2, Python · AR/VR/XR</p>` },
   { id: 'pub', title: 'Publications', where: 'Susa', pos: XZ('Susa'), color: 0xa371f7, unlock: 'Minimap unlocked',
     html: `<ul><li><b>CARLA-IVR</b>: an open CARLA extension for immersive AR-HUD evaluation and reproducible experimental design – IEEE OJVT, 2026</li><li>A review of automotive AR-HUD interfaces across driver roles and automation levels – IEEE T-ITS, 2026</li><li>Towards CARLA VR: testing head-up displays in CARLA – SAI FICC, 2025</li><li>AR for warehouses: marker-based navigation and inventory – ICCSCC, 2024</li><li>The WalkingSeat: a leaning interface for VR locomotion – EuroXR, 2023</li></ul>` },
-  { id: 'exp', title: 'Experience', where: "Balme, Val d'Ala", pos: XZ('Balme'), color: 0x3fb950, unlock: 'HUD complete',
+  { id: 'exp', title: 'Experience', where: 'the top of Uja di Ciamarella, Valli di Lanzo', pos: toXZ(...SUMMIT_LL), color: 0x3fb950, unlock: 'HUD complete',
     html: `<ul><li><b>PhD researcher</b>, Politecnico di Torino (2022 – present): conceived CARLA-IVR, cutting immersive study setup from about a month to under a week; opened 8 industry and research collaborations</li><li><b>Co-lecturer &amp; thesis supervisor</b> (2023 – present): 7 master theses, 11 interdisciplinary student teams in industry challenges</li><li><b>Visiting researcher</b>, Computer Vision Center, Barcelona (2025)</li><li><b>Research assistant</b>, Reply (2023 – 2025)</li></ul>` },
 ];
-const CARPET_ROUTE = [XZ('Torino'), toXZ(7.6, 45.2), XZ('Lanzo'), XZ('Ceres'), toXZ(7.3, 45.30), XZ('Balme')];
+const CARPET_ROUTE = [XZ('Torino'), toXZ(7.6, 45.2), XZ('Lanzo'), XZ('Ceres'), toXZ(7.3, 45.30), XZ('Balme'), toXZ(...SUMMIT_LL)];
 const DOG_POS = toXZ(8.06, 44.66); // a hill in the Langhe, near Alba
 const PDF_URL = '../CV_Vezzani_Printable.pdf';
 
@@ -184,7 +185,7 @@ function groundAt(x, z) { // bilinear on the samples, matches the meshes closely
     else tmp.copy(cHill).lerp(cRock, smooth(6, 10, y));
     if (slope > 0.8 && y > OUTSIDE_Y + 0.01) tmp.lerp(cRock, smooth(0.8, 1.4, slope));
     if (y > 12.5) tmp.lerp(cSnow, smooth(12.5, 15.5, y));
-    tmp.offsetHSL(0, 0, (hash(i, j) - 0.5) * 0.04);
+    tmp.offsetHSL(0, 0, (hash(i, j) - 0.5) * 0.015);
     col.set([tmp.r, tmp.g, tmp.b], k * 3);
   }
   for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = i + j * N, b = a + 1, c = a + N, d = c + 1; idx.push(a, c, b, b, c, d); }
@@ -265,8 +266,8 @@ function label(text, x, z, lift = 10, scale = 1) {
   s.scale.set(13 * scale, 3.25 * scale, 1); s.position.set(x, groundAt(x, z) + lift, z); scene.add(s); return s;
 }
 { // towns: little houses, no names (and no colliders)
-  const TOWNS = { Torino: 34, Novara: 14, Alessandria: 14, Asti: 12, Cuneo: 12, Vercelli: 10, Biella: 10, Ivrea: 9, Alba: 9, Domodossola: 8, Susa: 7, Lanzo: 7, Ceres: 5, Balme: 5 };
-  const SCATTER = 160, total = Object.values(TOWNS).reduce((a, b) => a + b, 0) + SCATTER;
+  const TOWNS = { Torino: 14, Novara: 6, Alessandria: 6, Asti: 5, Cuneo: 5, Vercelli: 4, Biella: 4, Ivrea: 4, Alba: 4, Domodossola: 3, Susa: 3, Lanzo: 3 };
+  const SCATTER = 35, total = Object.values(TOWNS).reduce((a, b) => a + b, 0) + SCATTER;
   const walls = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 2, 2.4), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), total);
   const roofGeo = new THREE.ConeGeometry(2.1, 1.5, 4); roofGeo.rotateY(Math.PI / 4);
   const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), total);
@@ -274,7 +275,7 @@ function label(text, x, z, lift = 10, scale = 1) {
   const wallCols = [0xf3e6c8, 0xf6d8a8, 0xeadfcf, 0xf0c9a0], roofCols = [0xb5523b, 0xa3442f, 0x8f3b2a, 0x6d6a66];
   let n = 0, seed = 1;
   for (const [name, count] of Object.entries(TOWNS)) {
-    const [cx, cz] = XZ(name), r = 3 + Math.sqrt(count) * 1.9;
+    const [cx, cz] = XZ(name), r = 3 + Math.sqrt(count) * 2.2;
     for (let k = 0, tries = 0; k < count && tries < count * 8; tries++) {
       seed++; const a = hash(seed, 3) * Math.PI * 2, d = Math.sqrt(hash(seed, 5)) * r, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, y = groundAt(x, z);
       if (y < WATER_Y + 0.3) continue;
@@ -308,13 +309,13 @@ for (const name of ['Monviso', 'Monte Rosa', 'Lago Maggiore']) { const [x, z] = 
 }
 { // a few trees and vineyards-ish dots
   const tg = new THREE.ConeGeometry(0.9, 2.6, 6), tm = new THREE.MeshLambertMaterial({ color: 0x2f6b2f, flatShading: true });
-  const trees = new THREE.InstancedMesh(tg, tm, 1900); let n = 0; const M = new THREE.Matrix4();
-  for (let t = 0; t < 6000 && n < 1400; t++) {
+  const trees = new THREE.InstancedMesh(tg, tm, 420); let n = 0; const M = new THREE.Matrix4();
+  for (let t = 0; t < 6000 && n < 320; t++) {
     const x = (hash(t, 7) - 0.5) * (SIZE - 20), z = (hash(t, 13) - 0.5) * (SIZE - 20), y = groundAt(x, z);
     if (y < 2 || y > 10 || fbm(x * 0.04, z * 0.04, 2) < 0.52) continue;
     const s = 0.7 + hash(t, 3) * 0.8; M.makeScale(s, s, s).setPosition(x, y + 1.2 * s, z); trees.setMatrixAt(n++, M);
   }
-  for (let t = 0, k = 0; t < 4000 && k < 450; t++) { // lone trees scattered everywhere
+  for (let t = 0, k = 0; t < 4000 && k < 80; t++) { // lone trees scattered everywhere
     const x = (hash(t, 31) - 0.5) * 215, z = (hash(t, 37) - 0.5) * 270, y = groundAt(x, z);
     if (y < WATER_Y + 0.6 || y > 11) continue;
     const s = 0.6 + hash(t, 41) * 0.9; M.makeScale(s, s, s).setPosition(x, y + 1.2 * s, z); trees.setMatrixAt(n++, M); k++;
@@ -323,6 +324,10 @@ for (const name of ['Monviso', 'Monte Rosa', 'Lago Maggiore']) { const [x, z] = 
 }
 
 // ---------------------------------------------------------------- pickups
+// the last piece sits on the highest point near the summit
+{ const exp = CV.find(c => c.id === 'exp'); let [bx, bz] = exp.pos, best = -1e9;
+  for (let dx = -5; dx <= 5; dx += 0.5) for (let dz = -5; dz <= 5; dz += 0.5) { const h = groundAt(exp.pos[0] + dx, exp.pos[1] + dz); if (h > best) { best = h; bx = exp.pos[0] + dx; bz = exp.pos[1] + dz; } }
+  exp.pos = [bx, bz]; CARPET_ROUTE[CARPET_ROUTE.length - 1] = [bx, bz]; }
 const pickups = CV.map((p, k) => {
   const [x, z] = p.pos, y = groundAt(x, z);
   const g = new THREE.Group(); g.position.set(x, y, z);
@@ -472,7 +477,7 @@ function collect(p) {
   if (p.id === 'pub') { hudOn.map = true; $('minimap').style.display = 'block'; }
   const firstThree = pickups.slice(0, 3).every(q => q.got);
   let extra = '';
-  if (p.id !== 'exp' && firstThree && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; $('slot-exp').textContent = 'Experience'; extra = '<p><b>AR navigation unlocked.</b> Follow the carpet to the last piece, up in the Valli di Lanzo.</p>'; }
+  if (p.id !== 'exp' && firstThree && !carpetOn) { carpetOn = true; pickups[3].group.visible = true; $('slot-exp').textContent = 'Experience'; extra = '<p><b>AR navigation unlocked.</b> Follow the carpet to the last piece, on the summit of Uja di Ciamarella in the Valli di Lanzo.</p>'; }
   if (p.id === 'exp') {
     carpetOn = false; chevrons.forEach(c => (c.visible = false));
     openCard(`<h2>${p.title}</h2><div class="unlock">${p.unlock} · ${p.where}</div>${p.html}<p><b>You built the whole HUD.</b> The full CV is yours.</p><div class="btns"><a class="btn" href="${PDF_URL}" target="_blank" rel="noopener">Open the full CV (PDF)</a><button class="ghost" data-close>Keep driving</button></div>`);
@@ -597,7 +602,7 @@ function frame() {
 
 $('loading').style.display = 'none';
 const startEl = $('start'); startEl.style.display = 'flex';
-const begin = () => { if (started) return; started = true; startEl.style.display = 'none'; canvas.focus(); toast('Start: the first piece is at the Politecnico, right ahead'); };
+const begin = () => { if (started) return; started = true; startEl.style.display = 'none'; canvas.focus(); toast('Find the pieces of my CV: follow the light beams'); };
 startEl.addEventListener('click', begin);
 window.addEventListener('keydown', begin, { once: true });
 frame();
