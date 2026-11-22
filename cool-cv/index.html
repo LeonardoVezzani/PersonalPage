@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cool CV — Leonardo Vezzani</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #9cc9e8; font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; color: #fff; }
+  canvas#game { display: block; width: 100%; height: 100%; outline: none; }
+  .hud { position: absolute; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  #help { left: 12px; bottom: 10px; font-size: 12px; opacity: .9; }
+  #slots { left: 50%; top: 10px; transform: translateX(-50%); display: flex; gap: 6px; }
+  .slot { width: 132px; padding: 4px 6px; border: 2px dashed rgba(255,255,255,.7); border-radius: 6px; font-size: 10.5px; text-align: center; background: rgba(0,0,0,.22); }
+  .slot.got { border-style: solid; background: rgba(9,105,218,.75); }
+  #speed { right: 14px; bottom: 12px; font-size: 30px; font-weight: 700; display: none; text-align: right; }
+  #speed small { display: block; font-size: 11px; font-weight: 400; opacity: .85; }
+  #alt { right: 14px; top: 58px; font-size: 13px; display: none; text-align: right; line-height: 1.5; }
+  #minimap { left: 12px; top: 58px; width: 150px; height: 190px; display: none; border: 2px solid rgba(255,255,255,.8); border-radius: 6px; background: rgba(0,0,0,.25); }
+  #toast { left: 50%; top: 22%; transform: translateX(-50%); font-size: 16px; font-weight: 700; padding: 8px 14px; border-radius: 6px; background: rgba(0,0,0,.55); opacity: 0; transition: opacity .3s; white-space: nowrap; }
+  #card { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.35); }
+  #card .box { width: min(560px, 90vw); max-height: 80vh; overflow: auto; background: #0d1117; border: 2px solid #2f81f7; border-radius: 10px; padding: 18px 20px; font-size: 13px; line-height: 1.5; color: #e6edf3; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  #card h2 { margin: 0 0 4px; font-size: 17px; color: #58a6ff; }
+  #card .unlock { font-size: 11px; color: #3fb950; margin-bottom: 10px; }
+  #card ul { margin: 6px 0; padding-left: 18px; }
+  #card li { margin: 3px 0; }
+  #card .btns { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  #card button, #card a.btn { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 6px; border: 1px solid #2f81f7; background: #1f6feb; color: #fff; cursor: pointer; text-decoration: none; }
+  #card button.ghost { background: transparent; }
+  #start { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(13,17,23,.55); cursor: pointer; }
+  #start .box { text-align: center; padding: 20px 26px; border-radius: 10px; background: rgba(13,17,23,.85); border: 2px solid #2f81f7; max-width: 90vw; }
+  #start h1 { margin: 0 0 8px; font-size: 22px; }
+  #start p { margin: 4px 0; font-size: 13px; color: #c9d1d9; }
+  #start .go { margin-top: 12px; font-weight: 700; color: #58a6ff; }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+</style>
+</head>
+<body>
+<canvas id="game" tabindex="0"></canvas>
+<div id="loading">Building Piemonte…</div>
+
+<div id="slots" class="hud"></div>
+<canvas id="minimap" class="hud" width="150" height="190"></canvas>
+<div id="alt" class="hud"></div>
+<div id="speed" class="hud"></div>
+<div id="help" class="hud">WASD / arrows: drive · Space: brake · in the air, arrows: flips · R: back on wheels</div>
+<div id="toast" class="hud"></div>
+
+<div id="card"><div class="box" id="cardBox"></div></div>
+
+<div id="start" style="display:none">
+  <div class="box">
+    <h1>Cool CV</h1>
+    <p>Drive a slightly oversized 4x4 across Piemonte.</p>
+    <p>Find the pieces of my CV: each one adds a part of your HUD.</p>
+    <p>With three pieces, an AR carpet guides you to the last one.</p>
+    <p>Somewhere out there, someone wants a ride.</p>
+    <p class="go">Click or press any key to start</p>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js", "cannon-es": "./vendor/cannon-es.min.js" } }
+</script>
+<script type="module" src="./game.js"></script>
+</body>
+</html>

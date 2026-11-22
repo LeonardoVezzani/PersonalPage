@@ -212,6 +212,20 @@
           </svg>
           <span>GitHub</span>
         </a>
+        <button type="button" id="cool-cv-btn"
+           class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white dark:bg-github-canvas-dark-subtle border-2 border-github-accent-emphasis dark:border-github-accent-dark rounded-md hover:bg-github-canvas-subtle dark:hover:bg-github-canvas-dark transition-colors"
+           title="Cool CV: drive across Piemonte to collect my CV">
+          <svg class="w-5 h-5" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="3" y="0" width="6" height="1" fill="#6b3e1f"/><rect x="2" y="1" width="8" height="1" fill="#6b3e1f"/>
+            <rect x="2" y="2" width="8" height="5" fill="#f1c27d"/>
+            <rect x="2" y="3" width="3" height="2" fill="#111"/><rect x="7" y="3" width="3" height="2" fill="#111"/><rect x="5" y="3" width="2" height="1" fill="#111"/>
+            <rect x="3" y="3" width="1" height="1" fill="#6ec1ff"/><rect x="8" y="3" width="1" height="1" fill="#6ec1ff"/>
+            <rect x="4" y="6" width="4" height="1" fill="#a0522d"/>
+            <rect x="3" y="7" width="6" height="1" fill="#f1c27d"/>
+            <rect x="1" y="8" width="10" height="4" fill="#e8590c"/><rect x="5" y="8" width="2" height="4" fill="#f08c00"/>
+          </svg>
+          <span>Cool CV</span>
+        </button>
       </div>
 
       <!-- Portfolio pages — secondary row, neutral/muted style -->
@@ -739,4 +753,28 @@
     });
 
     // Listen for system theme changes
-    window
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+      if ((localStorage.getItem('theme') || 'system') === 'system') applyTheme('system');
+    });
+  </script>
+
+  <!-- Cool CV game -->
+  <div id="cool-cv-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-2 md:p-6" role="dialog" aria-modal="true" aria-label="Cool CV game">
+    <div class="relative w-full max-w-6xl bg-black rounded-lg overflow-hidden shadow-2xl border-2 border-github-accent-emphasis" style="height:min(80vh,720px)">
+      <button type="button" id="cool-cv-close" class="absolute top-2 right-2 z-10 px-2 py-1 text-xs font-medium rounded bg-white/90 text-black hover:bg-white" aria-label="Close game">Close ✕</button>
+      <iframe id="cool-cv-frame" title="Cool CV" class="w-full h-full border-0" allow="fullscreen"></iframe>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const modal = document.getElementById('cool-cv-modal'), frame = document.getElementById('cool-cv-frame');
+      const open = () => { if (!frame.getAttribute('src')) frame.src = 'cool-cv/index.html'; modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.style.overflow = 'hidden'; setTimeout(() => frame.focus(), 50); };
+      const close = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); document.body.style.overflow = ''; };
+      document.getElementById('cool-cv-btn').addEventListener('click', open);
+      document.getElementById('cool-cv-close').addEventListener('click', close);
+      modal.addEventListener('click', e => { if (e.target === modal) close(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
+    })();
+  </script>
+</body>
+</html>
