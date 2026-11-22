@@ -36,7 +36,7 @@
 </head>
 <body>
 <canvas id="game" tabindex="0"></canvas>
-<div id="loading">Building Piemonte…</div>
+<div id="loading">Building the valley…</div>
 
 <div id="slots" class="hud"></div>
 <canvas id="minimap" class="hud" width="150" height="190"></canvas>
@@ -50,7 +50,7 @@
 <div id="start" style="display:none">
   <div class="box">
     <h1>Cool CV</h1>
-    <p>Drive a slightly oversized 4x4 across Piemonte.</p>
+    <p>Drive a slightly oversized 4x4 around a mountain valley.</p>
     <p>Find the pieces of my CV: each one adds a part of your HUD.</p>
     <p>With three pieces, an AR carpet guides you to the last one.</p>
     <p>Somewhere out there, someone wants a ride.</p>
@@ -59,7 +59,7 @@
 </div>
 
 <script>
-  // show load errors instead of a silent "Building Piemonte…"
+  // show load errors instead of a silent "Building the valley…"
   window.addEventListener('error', e => { const l = document.getElementById('loading'); if (l && l.style.display !== 'none') l.textContent = 'Could not start the game: ' + (e.message || 'a file did not load'); }, true);
   window.addEventListener('unhandledrejection', e => { const l = document.getElementById('loading'); if (l && l.style.display !== 'none') l.textContent = 'Could not start the game: ' + (e.reason && e.reason.message || e.reason); });
 </script>
