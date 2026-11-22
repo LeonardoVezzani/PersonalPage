@@ -253,15 +253,17 @@ const BORDER_SEGS = BORDER.map((p, i) => [p, BORDER[(i + 1) % BORDER.length]]);
 
 // ---------------------------------------------------------------- the 4x4
 const START = [0, 8];
-const CAR_SCALE = 2;
+const SIZE_K = 0.6; // crawler and dog at 60% of their former size
+const CAR_SCALE = 2 * SIZE_K;
 const chassisBody = new CANNON.Body({ mass: 320, angularDamping: 0.5, linearDamping: 0.02 });
-chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(2.0, 1.0, 3.6))); // only meets the border cliffs
+chassisBody.addShape(new CANNON.Box(new CANNON.Vec3(2.0 * SIZE_K, 1.0 * SIZE_K, 3.6 * SIZE_K))); // only meets the border cliffs
 chassisBody.position.set(START[0], groundAt(...START) + 4, START[1]);
 chassisBody.quaternion.setFromEuler(0, Math.PI, 0); // face north
 chassisBody.fixedRotation = true; chassisBody.updateMassProperties(); // orientation comes from the terrain, not from collisions
 world.addBody(chassisBody);
-const RIDE = 2.55; // height of the car's centre above the ground when it sits on its wheels
-const WHEELS = [[2.1, 2.7], [-2.1, 2.7], [2.1, -2.7], [-2.1, -2.7]].map(([x, z]) => new CANNON.Vec3(x, -1.3, z));
+const RIDE = 2.55 * SIZE_K; // height of the car's centre above the ground when it sits on its wheels
+const WHEEL_R = 1.24 * SIZE_K, AX = 2.1 * SIZE_K, AZ = 2.7 * SIZE_K;
+const WHEELS = [[AX, AZ], [-AX, AZ], [AX, -AZ], [-AX, -AZ]].map(([x, z]) => new CANNON.Vec3(x, -1.3 * SIZE_K, z));
 
 const car = new THREE.Group(); car.scale.setScalar(CAR_SCALE); scene.add(car);
 {
@@ -277,7 +279,7 @@ const car = new THREE.Group(); car.scale.setScalar(CAR_SCALE); scene.add(car);
 }
 car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, 0.2, -1.1); car.add(car.userData.seat); // the back of the crawler
 const wheelMeshes = WHEELS.map(() => {
-  const g = new THREE.CylinderGeometry(1.24, 1.24, 1.0, 12); g.rotateZ(Math.PI / 2);
+  const g = new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 1.0 * SIZE_K, 12); g.rotateZ(Math.PI / 2);
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: 0x1d1d1d, flatShading: true })); m.castShadow = true; scene.add(m); return m;
 });
 
@@ -381,6 +383,22 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
   for (let k = 0; k < 4; k++) for (let i = 1; i < dense.length - 1; i++) { // smooth, but never into a blocked cell
     const a = dense[i - 1], c = dense[i + 1], q = dense[i], nx = (a[0] + q[0] * 2 + c[0]) / 4, nz = (a[1] + q[1] * 2 + c[1]) / 4;
     if (!blocked[idx(nx, nz)]) { q[0] = nx; q[1] = nz; } }
+  { // smooth the end: from the sharpest bend in the last part of the route, one clean curve up to the summit
+    let kMax = -1, aMax = 0;
+    for (let i = Math.floor(dense.length * 0.5); i < dense.length - 2; i++) {
+      const a = dense[i - 2], b = dense[i], c = dense[i + 2]; if (!a || !c) continue;
+      const v1x = b[0] - a[0], v1z = b[1] - a[1], v2x = c[0] - b[0], v2z = c[1] - b[1];
+      const ang = Math.abs(Math.atan2(v1x * v2z - v1z * v2x, v1x * v2x + v1z * v2z)); if (ang > aMax) { aMax = ang; kMax = i; }
+    }
+    if (kMax > 3) {
+      const start = kMax - 3, P0 = dense[start], prev = dense[start - 2] || dense[0], end = dense[dense.length - 1];
+      let tx = P0[0] - prev[0], tz = P0[1] - prev[1]; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+      const L = Math.hypot(end[0] - P0[0], end[1] - P0[1]), C = [P0[0] + tx * L * 0.45, P0[1] + tz * L * 0.45];
+      const n = Math.max(6, Math.ceil(L / 2.5)), curve = [];
+      for (let k = 1; k <= n; k++) { const t = k / n, u = 1 - t; curve.push([u * u * P0[0] + 2 * u * t * C[0] + t * t * end[0], u * u * P0[1] + 2 * u * t * C[1] + t * t * end[1]]); }
+      dense = [...dense.slice(0, start + 1), ...curve];
+    }
+  }
   CARPET_ROUTE.length = 0; CARPET_ROUTE.push(...dense); }
 const pickups = CV.map((p, k) => {
   const [x, z] = p.pos, y = groundAt(x, z);
@@ -410,7 +428,7 @@ const dog = new THREE.Group();
   dog.userData.tail = add(new THREE.BoxGeometry(0.1, 0.1, 0.5), fur, 0, 0.95, -0.7);
   dog.userData.head = head;
   dog.position.set(DOG_POS[0], groundAt(...DOG_POS), DOG_POS[1]);
-  dog.scale.setScalar(3.3);
+  dog.scale.setScalar(3.3 * SIZE_K);
   scene.add(dog);
 }
 // ---------------------------------------------------------------- optional glTF models
@@ -533,7 +551,7 @@ function updateWalkers(dt, t) {
       w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
     }
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
-    if (dc < 3.6) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person', 0.7); if (hitToastT <= 0) { toast(w.kind === 'sheep' ? 'Baa! Mind the sheep' : 'Hey! Watch where you drive'); hitToastT = 3; } chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person', 0.7); if (hitToastT <= 0) { toast(w.kind === 'sheep' ? 'Baa! Mind the sheep' : 'Hey! Watch where you drive'); hitToastT = 3; } chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
     if (w.scared > 0) { w.scared -= dt; speed *= 3; }
     else if (dc < 11) { // step aside when the crawler gets close
@@ -570,7 +588,7 @@ function updateParticles(dt) {
     const fx = Math.sin(carYaw), fz = Math.cos(carYaw), n = sp > 10 ? 3 : 2;
     for (const wi of [2, 3]) for (let k = 0; k < n; k++) { // rear wheels
       const wp = chassisBody.pointToWorldFrame(WHEELS[wi], new CANNON.Vec3()), surf = surfaceAt(wp.x, wp.z), q = pState[pNext];
-      q.life = 0.5 + Math.random() * 0.4; q.x = wp.x - fx * 1.2; q.z = wp.z - fz * 1.2; q.y = groundAt(wp.x, wp.z) + 0.3;
+      q.life = 0.5 + Math.random() * 0.4; q.x = wp.x - fx * WHEEL_R; q.z = wp.z - fz * WHEEL_R; q.y = groundAt(wp.x, wp.z) + 0.3;
       const kick = surf === 'water' ? 1.6 : 1;
       q.vx = -fx * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3; q.vz = -fz * (2 + Math.random() * 3) + (Math.random() - 0.5) * 3; q.vy = (3 + Math.random() * 4) * kick;
       q.s = (surf === 'snow' || surf === 'water' ? 1.2 : 1) * (0.7 + Math.random() * 0.6);
@@ -617,7 +635,7 @@ function honk() {
     shout(dog.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.6, 0)), fwdDir); toast('Woof! Woof!');
   } else {
     play('honk', 0.6);
-    shout(car.position.clone().addScaledVector(fwdDir, 4.6).add(new THREE.Vector3(0, 1.2, 0)), fwdDir); toast('Beep beep!');
+    shout(car.position.clone().addScaledVector(fwdDir, 4.6 * SIZE_K).add(new THREE.Vector3(0, 1.2 * SIZE_K, 0)), fwdDir); toast('Beep beep!');
   }
   for (const w of walkers) { // everyone nearby runs off
     const p = w.g.position, d = Math.hypot(p.x - chassisBody.position.x, p.z - chassisBody.position.z);
@@ -749,7 +767,7 @@ camLook.set(START[0], groundAt(...START), START[1]);
 
 // Driving is arcade: on the ground the controller sets the car's speed and turn rate directly,
 // so speed is the same in every direction and on every slope. Wheels only do the suspension.
-const VMAX = 16, VBACK = 8;
+const VMAX = 16 * 1.35, VBACK = 8 * 1.35; // 35% faster
 let driveMode = 'car'; // 'car' (default): up = throttle, left/right = steer · 'map': simplified, arrows point the car on screen
 // The crawler: it always sits on its four wheels. Input sets a heading and a ground speed; the body's height,
 // pitch and roll come from the terrain under the wheels. Physics only stops it at houses and the border cliffs.
@@ -776,9 +794,9 @@ function control(h) {
 function settleOnWheels() { // height, pitch and roll from the ground under the four wheels
   const p = chassisBody.position, c = Math.cos(carYaw), sn = Math.sin(carYaw);
   const at = (lx, lz) => groundAt(p.x + lx * c + lz * sn, p.z - lx * sn + lz * c);
-  const fl = at(2.1, 2.7), fr = at(-2.1, 2.7), bl = at(2.1, -2.7), br = at(-2.1, -2.7);
+  const fl = at(AX, AZ), fr = at(-AX, AZ), bl = at(AX, -AZ), br = at(-AX, -AZ);
   p.y = (fl + fr + bl + br) / 4 + RIDE;
-  const pitch = Math.atan2((bl + br) / 2 - (fl + fr) / 2, 5.4), roll = Math.atan2((fl + bl) / 2 - (fr + br) / 2, 4.2);
+  const pitch = Math.atan2((bl + br) / 2 - (fl + fr) / 2, 2 * AZ), roll = Math.atan2((fl + bl) / 2 - (fr + br) / 2, 2 * AX);
   chassisBody.quaternion.setFromEuler(pitch, carYaw, roll, 'YXZ');
   return [fl, fr, bl, br];
 }
@@ -796,9 +814,9 @@ function frame() {
   step(dt);
   // sync visuals
   car.position.copy(chassisBody.position); car.quaternion.copy(chassisBody.quaternion);
-  wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(new CANNON.Vec3(0, 0, 1))) * dt / 1.24;
+  wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(new CANNON.Vec3(0, 0, 1))) * dt / WHEEL_R;
   const spinQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), wheelSpin);
-  WHEELS.forEach((loc, i) => { const wp = chassisBody.pointToWorldFrame(loc, new CANNON.Vec3()); wheelMeshes[i].position.set(wp.x, wheelGround[i] + 1.24, wp.z); wheelMeshes[i].quaternion.copy(car.quaternion).multiply(spinQ); }); // each wheel sits on the ground under it
+  WHEELS.forEach((loc, i) => { const wp = chassisBody.pointToWorldFrame(loc, new CANNON.Vec3()); wheelMeshes[i].position.set(wp.x, wheelGround[i] + WHEEL_R, wp.z); wheelMeshes[i].quaternion.copy(car.quaternion).multiply(spinQ); }); // each wheel sits on the ground under it
   // camera: fixed isometric angle, follows the car smoothly
   camLook.lerp(car.position, 1 - Math.exp(-dt * 5));
   camera.position.copy(camLook).add(CAM_OFFSET); camera.lookAt(camLook);
@@ -808,17 +826,17 @@ function frame() {
     if (p.got || !p.group.visible) continue;
     p.card.rotation.y = t * 1.5; p.card.position.y = 3 + Math.sin(t * 2) * 0.4;
     const d = Math.hypot(car.position.x - p.group.position.x, car.position.z - p.group.position.z);
-    if (d < 7.5 && !cardOpen) collect(p);
+    if (d < 6.5 && !cardOpen) collect(p);
   }
   // dog
   const dDog = Math.hypot(car.position.x - DOG_POS[0], car.position.z - DOG_POS[1]);
   if (dogState === 'waiting') {
     dog.userData.tail.rotation.y = Math.sin(t * 10) * 0.6; dog.lookAt(car.position.x, dog.position.y, car.position.z);
-    if (dDog < 13 && chassisBody.velocity.length() < 8) { dogState = 'jumping'; dogJumpT = 0; dogJumpFrom.copy(dog.position); toast('Your co-pilot just jumped aboard!'); }
+    if (dDog < 10 && chassisBody.velocity.length() < 8) { dogState = 'jumping'; dogJumpT = 0; dogJumpFrom.copy(dog.position); toast('Your co-pilot just jumped aboard!'); }
   } else if (dogState === 'jumping') {
     dogJumpT += dt / 0.7; const to = car.userData.seat.getWorldPosition(new THREE.Vector3());
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
-    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 / CAR_SCALE); } // same size as on the ground, standing across the rear bed
+    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; dog.rotation.y = Math.PI / 2 + Math.sin(t * 0.7) * 0.15; }
   { // fade the border cliffs when they stand between the camera (south) and the car
     const cx = car.position.x, cz = car.position.z; let hide = false;
