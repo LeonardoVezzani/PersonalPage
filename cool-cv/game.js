@@ -2,6 +2,14 @@
 // three.js for rendering, cannon-es for physics. No build step.
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// Optional 3D models: drop .glb files in cool-cv/assets/ and they replace the box models.
+// length = how long the model should be in world units; yaw = turn it so it faces +z (forward).
+const ASSETS = {
+  car: { url: 'assets/car.glb', length: 4.4, yaw: 0, hideWheels: true },
+  dog: { url: 'assets/dog.glb', length: 1.3, yaw: 0 },
+};
 
 // ---------------------------------------------------------------- map projection
 // 1 world unit ≈ 0.5 km. x grows east, z grows south.
@@ -64,34 +72,42 @@ const PO = P([[7.1, 44.7], [7.4, 44.76], [7.6, 44.95], [7.69, 45.05], [7.95, 45.
 const LAKE = (() => { const [x, z] = toXZ(8.58, 45.95); return { x, z, rx: 9, rz: 38 }; })();
 const HILLS = [[8.05, 44.6, 55, 7], [8.3, 45.05, 45, 6], [7.78, 45.08, 12, 5]].map(([lo, la, r, h]) => { const [x, z] = toXZ(lo, la); return { x, z, r, h }; });
 
+// Piemonte border (openpolis/geojson-italy, ISTAT 2024, simplified), lon/lat
+const BORDER_LL = [[7.136,45.28],[7.121,45.3],[7.109,45.32],[7.128,45.328],[7.134,45.348],[7.155,45.356],[7.163,45.382],[7.178,45.396],[7.164,45.413],[7.142,45.425],[7.121,45.432],[7.106,45.45],[7.11,45.47],[7.117,45.491],[7.125,45.51],[7.143,45.499],[7.143,45.478],[7.162,45.486],[7.185,45.483],[7.207,45.476],[7.228,45.475],[7.248,45.494],[7.266,45.503],[7.29,45.515],[7.312,45.515],[7.334,45.521],[7.355,45.524],[7.374,45.516],[7.394,45.527],[7.416,45.541],[7.443,45.554],[7.459,45.569],[7.485,45.582],[7.506,45.582],[7.526,45.577],[7.547,45.588],[7.568,45.591],[7.586,45.582],[7.605,45.574],[7.63,45.569],[7.657,45.563],[7.675,45.552],[7.696,45.556],[7.716,45.559],[7.736,45.551],[7.757,45.565],[7.777,45.571],[7.794,45.582],[7.816,45.593],[7.837,45.598],[7.862,45.597],[7.888,45.598],[7.901,45.617],[7.915,45.633],[7.936,45.636],[7.926,45.655],[7.912,45.671],[7.907,45.691],[7.924,45.706],[7.937,45.724],[7.926,45.742],[7.905,45.748],[7.885,45.76],[7.874,45.777],[7.864,45.795],[7.862,45.82],[7.864,45.84],[7.876,45.862],[7.864,45.893],[7.862,45.914],[7.871,45.933],[7.877,45.955],[7.88,45.975],[7.902,45.988],[7.922,45.997],[7.955,45.997],[7.982,45.998],[8.006,46.012],[8.014,46.033],[8.033,46.047],[8.023,46.068],[8.032,46.093],[8.059,46.103],[8.084,46.106],[8.106,46.112],[8.115,46.13],[8.135,46.137],[8.153,46.146],[8.157,46.171],[8.152,46.197],[8.142,46.218],[8.125,46.23],[8.107,46.25],[8.088,46.254],[8.104,46.277],[8.12,46.29],[8.138,46.302],[8.164,46.296],[8.184,46.3],[8.204,46.305],[8.216,46.321],[8.234,46.34],[8.258,46.346],[8.266,46.365],[8.289,46.368],[8.315,46.381],[8.31,46.403],[8.291,46.407],[8.303,46.424],[8.33,46.429],[8.348,46.44],[8.37,46.452],[8.391,46.452],[8.413,46.459],[8.435,46.464],[8.462,46.448],[8.458,46.426],[8.467,46.4],[8.467,46.374],[8.462,46.354],[8.465,46.334],[8.45,46.321],[8.434,46.302],[8.439,46.283],[8.455,46.266],[8.464,46.245],[8.479,46.23],[8.501,46.226],[8.533,46.217],[8.541,46.198],[8.562,46.185],[8.573,46.166],[8.599,46.156],[8.61,46.133],[8.632,46.122],[8.66,46.112],[8.681,46.107],[8.703,46.101],[8.706,46.08],[8.716,46.062],[8.72,46.042],[8.729,46.023],[8.715,46.008],[8.691,45.993],[8.654,45.966],[8.617,45.938],[8.6,45.926],[8.583,45.912],[8.57,45.891],[8.584,45.865],[8.595,45.845],[8.592,45.824],[8.574,45.811],[8.556,45.801],[8.556,45.775],[8.572,45.759],[8.587,45.743],[8.6,45.727],[8.623,45.724],[8.644,45.723],[8.647,45.694],[8.653,45.675],[8.673,45.677],[8.681,45.651],[8.662,45.643],[8.663,45.623],[8.683,45.619],[8.695,45.603],[8.696,45.582],[8.707,45.559],[8.719,45.531],[8.72,45.51],[8.739,45.498],[8.76,45.497],[8.777,45.484],[8.79,45.466],[8.805,45.45],[8.819,45.435],[8.829,45.415],[8.842,45.399],[8.823,45.392],[8.804,45.38],[8.779,45.383],[8.76,45.376],[8.736,45.376],[8.744,45.357],[8.743,45.337],[8.723,45.322],[8.716,45.303],[8.697,45.295],[8.676,45.293],[8.659,45.304],[8.656,45.326],[8.634,45.337],[8.619,45.353],[8.599,45.349],[8.578,45.348],[8.557,45.353],[8.532,45.345],[8.538,45.32],[8.52,45.312],[8.501,45.295],[8.513,45.275],[8.534,45.278],[8.533,45.258],[8.546,45.242],[8.53,45.23],[8.545,45.209],[8.525,45.2],[8.546,45.195],[8.572,45.206],[8.546,45.183],[8.555,45.164],[8.577,45.153],[8.59,45.133],[8.612,45.128],[8.609,45.108],[8.622,45.091],[8.64,45.078],[8.645,45.057],[8.644,45.036],[8.657,45.019],[8.682,45.029],[8.702,45.028],[8.728,45.023],[8.75,45.021],[8.767,45.01],[8.782,45.023],[8.802,45.026],[8.822,45.04],[8.841,45.047],[8.861,45.051],[8.88,45.06],[8.9,45.044],[8.904,45.02],[8.908,44.998],[8.925,44.985],[8.952,44.988],[8.973,44.973],[8.977,44.953],[8.998,44.918],[9.015,44.901],[9.035,44.888],[9.055,44.889],[9.067,44.869],[9.055,44.852],[9.064,44.833],[9.077,44.815],[9.098,44.817],[9.116,44.807],[9.147,44.809],[9.165,44.8],[9.172,44.781],[9.189,44.759],[9.209,44.754],[9.206,44.728],[9.206,44.707],[9.2,44.686],[9.206,44.661],[9.199,44.639],[9.2,44.616],[9.203,44.596],[9.183,44.591],[9.164,44.581],[9.145,44.574],[9.122,44.58],[9.104,44.591],[9.099,44.612],[9.08,44.621],[9.058,44.622],[9.039,44.641],[9.023,44.654],[9.007,44.668],[8.986,44.664],[8.967,44.67],[8.938,44.676],[8.921,44.663],[8.902,44.645],[8.883,44.639],[8.899,44.624],[8.906,44.603],[8.912,44.583],[8.92,44.565],[8.901,44.555],[8.88,44.555],[8.854,44.56],[8.833,44.562],[8.828,44.542],[8.808,44.535],[8.795,44.519],[8.793,44.498],[8.771,44.489],[8.768,44.519],[8.757,44.536],[8.738,44.552],[8.731,44.571],[8.714,44.581],[8.693,44.581],[8.671,44.581],[8.646,44.582],[8.625,44.585],[8.611,44.571],[8.612,44.548],[8.593,44.535],[8.574,44.523],[8.563,44.506],[8.544,44.512],[8.516,44.51],[8.482,44.511],[8.458,44.515],[8.449,44.497],[8.429,44.503],[8.41,44.51],[8.399,44.491],[8.383,44.476],[8.365,44.467],[8.351,44.482],[8.329,44.488],[8.305,44.503],[8.276,44.507],[8.253,44.529],[8.233,44.518],[8.218,44.502],[8.219,44.482],[8.198,44.471],[8.207,44.448],[8.222,44.433],[8.208,44.416],[8.194,44.4],[8.171,44.395],[8.152,44.386],[8.141,44.369],[8.145,44.347],[8.125,44.333],[8.105,44.329],[8.104,44.307],[8.083,44.308],[8.061,44.3],[8.077,44.287],[8.087,44.27],[8.068,44.256],[8.081,44.241],[8.067,44.225],[8.075,44.206],[8.095,44.197],[8.092,44.175],[8.074,44.155],[8.054,44.143],[8.035,44.15],[8.012,44.156],[7.989,44.145],[8.003,44.126],[8.012,44.105],[7.99,44.109],[7.965,44.111],[7.946,44.102],[7.926,44.11],[7.902,44.108],[7.877,44.114],[7.856,44.12],[7.83,44.121],[7.789,44.134],[7.769,44.14],[7.746,44.135],[7.726,44.126],[7.718,44.104],[7.732,44.084],[7.754,44.085],[7.736,44.075],[7.714,44.062],[7.718,44.082],[7.696,44.1],[7.681,44.114],[7.667,44.13],[7.679,44.147],[7.682,44.167],[7.657,44.177],[7.637,44.177],[7.626,44.157],[7.6,44.152],[7.566,44.155],[7.548,44.146],[7.526,44.14],[7.504,44.144],[7.484,44.134],[7.458,44.127],[7.432,44.13],[7.397,44.123],[7.376,44.121],[7.355,44.118],[7.345,44.139],[7.321,44.143],[7.292,44.146],[7.265,44.149],[7.248,44.159],[7.229,44.169],[7.206,44.182],[7.19,44.195],[7.167,44.205],[7.147,44.2],[7.127,44.21],[7.103,44.22],[7.077,44.232],[7.057,44.229],[7.037,44.224],[7.019,44.233],[7.001,44.243],[6.996,44.271],[6.982,44.287],[6.962,44.294],[6.957,44.314],[6.932,44.331],[6.919,44.353],[6.898,44.359],[6.896,44.387],[6.896,44.408],[6.911,44.424],[6.933,44.427],[6.917,44.449],[6.897,44.471],[6.878,44.48],[6.865,44.497],[6.857,44.518],[6.865,44.537],[6.881,44.554],[6.904,44.556],[6.921,44.57],[6.933,44.592],[6.95,44.614],[6.969,44.626],[6.952,44.638],[6.953,44.66],[6.965,44.678],[6.987,44.69],[7.012,44.689],[7.036,44.69],[7.061,44.68],[7.071,44.699],[7.054,44.715],[7.031,44.729],[7.022,44.748],[7.021,44.772],[7.002,44.791],[7.02,44.816],[7.008,44.833],[6.977,44.846],[6.956,44.854],[6.932,44.863],[6.913,44.845],[6.881,44.849],[6.842,44.86],[6.821,44.871],[6.802,44.88],[6.781,44.893],[6.763,44.902],[6.749,44.922],[6.753,44.943],[6.765,44.959],[6.751,44.978],[6.751,44.998],[6.74,45.017],[6.72,45.021],[6.694,45.02],[6.671,45.024],[6.665,45.048],[6.663,45.069],[6.646,45.082],[6.627,45.102],[6.642,45.116],[6.665,45.122],[6.68,45.14],[6.702,45.143],[6.728,45.139],[6.751,45.143],[6.768,45.16],[6.799,45.151],[6.823,45.144],[6.845,45.131],[6.87,45.134],[6.891,45.137],[6.888,45.16],[6.911,45.167],[6.932,45.171],[6.953,45.18],[6.967,45.195],[6.989,45.21],[7.017,45.215],[7.041,45.225],[7.061,45.216],[7.084,45.223],[7.103,45.236],[7.123,45.244],[7.133,45.264]];
+const BORDER = BORDER_LL.map(([lo, la]) => toXZ(lo, la));
+// border stretches that are mountains: Alps (west, north), Maritime Alps and Apennines (south)
+const ALP_SEGS = [], APP_SEGS = [];
+for (let i = 0; i < BORDER_LL.length; i++) {
+  const [lo1, la1] = BORDER_LL[i], [lo2, la2] = BORDER_LL[(i + 1) % BORDER_LL.length];
+  const seg = [BORDER[i], BORDER[(i + 1) % BORDER.length]];
+  const alpine = (p, q) => (p < 7.95 && q > 44.25) || q > 45.7 || (q < 44.45 && p < 7.95);
+  const apen = (p, q) => q < 44.62 && p >= 7.95;
+  if (alpine(lo1, la1) && alpine(lo2, la2)) ALP_SEGS.push(seg); else if (apen(lo1, la1) && apen(lo2, la2)) APP_SEGS.push(seg);
+}
+function distSegs(x, z, segs) { let best = 1e9; for (const [[ax, az], [bx, bz]] of segs) { const dx = bx - ax, dz = bz - az; let t = ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1); t = t < 0 ? 0 : t > 1 ? 1 : t; const d = Math.hypot(x - ax - t * dx, z - az - t * dz); if (d < best) best = d; } return best; }
+function inside(x, z) { let c = false; for (let i = 0, j = BORDER.length - 1; i < BORDER.length; j = i++) { const [xi, zi] = BORDER[i], [xj, zj] = BORDER[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; }
+const OUTSIDE_Y = -8;
+const RIVER = new Set(); // vertex flags for coloring, filled while sampling
+
 function height(x, z) {
+  if (!inside(x, z)) return OUTSIDE_Y;
   let h = 1.0 + fbm(x * 0.02, z * 0.02, 3) * 0.8;
-  // Alps
-  const [dA] = distToPolyline(x, z, ALPS);
-  const alp = Math.pow(1 - smooth(0, 105, dA), 1.35);
-  h += alp * (24 + 18 * ridge(x * 0.018, z * 0.018));
-  // Apennines
-  const [dP] = distToPolyline(x, z, APENNINES);
-  h += Math.pow(1 - smooth(0, 60, dP), 1.4) * (8 + 7 * ridge(x * 0.03 + 7, z * 0.03));
-  // hills: Langhe, Monferrato, Collina di Torino
+  const dA = distSegs(x, z, ALP_SEGS), dP = distSegs(x, z, APP_SEGS);
+  h += Math.pow(1 - smooth(0, 95, dA), 1.35) * (24 + 18 * ridge(x * 0.018, z * 0.018));
+  h += Math.pow(1 - smooth(0, 50, dP), 1.4) * (8 + 7 * ridge(x * 0.03 + 7, z * 0.03));
   for (const H of HILLS) { const d = Math.hypot(x - H.x, z - H.z); const m = 1 - smooth(H.r * 0.4, H.r, d); h += m * H.h * (0.45 + fbm(x * 0.07, z * 0.07, 3)); }
-  // map edge walls
-  const edge = Math.min(HALF - Math.abs(x), HALF - Math.abs(z));
-  h += Math.pow(1 - smooth(0, 45, edge), 2) * 40;
-  // valleys
   for (const V of VALLEYS) {
     const [d, t] = distToPolyline(x, z, V.pl);
     if (d < V.w) { const floor = V.f0 + (V.f1 - V.f0) * t + fbm(x * 0.05, z * 0.05, 2) * 0.6; const s = smooth(V.w * 0.35, V.w, d); h = Math.min(h, floor + (h - floor) * s); }
   }
-  // peaks
   for (const K of PEAKS) { const d = Math.hypot(x - K.x, z - K.z); h += K.h * Math.exp(-(d * d) / (2 * K.r * K.r)); }
-  // Po and Lago Maggiore
   const [dPo] = distToPolyline(x, z, PO);
   if (dPo < 4 && h < 4) h -= (1 - smooth(1.2, 4, dPo)) * 0.9;
   const lk = Math.hypot((x - LAKE.x) / LAKE.rx, (z - LAKE.z) / LAKE.rz);
   if (lk < 1.3) h = Math.min(h, -1.5 + 3 * smooth(0.7, 1.3, lk) + (h > 3 ? (h - 3) * smooth(1, 1.3, lk) : 0));
-  return h;
+  return h > 1 ? 1 + (h - 1) * RELIEF : h;
 }
+const RELIEF = 0.55; // flatter relief reads better from the fixed top-down camera
 
 // ---------------------------------------------------------------- places
 const PLACES = {
@@ -125,8 +141,10 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9cc9e8);
-scene.fog = new THREE.Fog(0x9cc9e8, 140, 420);
-const camera = new THREE.PerspectiveCamera(60, 1, 0.5, 900);
+scene.background = new THREE.Color(0x2b3440);
+let VIEW = 18; // half height of the view, in world units
+const camera = new THREE.OrthographicCamera(-VIEW, VIEW, VIEW, -VIEW, -200, 600);
+const CAM_OFFSET = new THREE.Vector3(0, 1, 0.9).normalize().multiplyScalar(160); // from the south, looking down ~48°
 scene.add(new THREE.HemisphereLight(0xdfefff, 0x5a6b3a, 0.9));
 const sun = new THREE.DirectionalLight(0xfff2d6, 1.6);
 sun.castShadow = true;
@@ -134,7 +152,7 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 260 });
 scene.add(sun, sun.target);
 
-function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); const a = w / h; camera.left = -VIEW * a; camera.right = VIEW * a; camera.top = VIEW; camera.bottom = -VIEW; camera.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
 
 // ---------------------------------------------------------------- terrain
@@ -154,12 +172,14 @@ function groundAt(x, z) { // bilinear on the samples, matches the meshes closely
     const gx = (heights[Math.min(N - 1, i + 1) + j * N] - heights[Math.max(0, i - 1) + j * N]) / (2 * ES);
     const gz = (heights[i + Math.min(N - 1, j + 1) * N] - heights[i + Math.max(0, j - 1) * N]) / (2 * ES);
     const slope = Math.hypot(gx, gz);
-    if (y < WATER_Y + 0.25) tmp.copy(cSand);
+    if (y <= OUTSIDE_Y + 0.01) tmp.set(0x4a3f35);
+    else if (y < WATER_Y) tmp.set(0x3b7fc4);
+    else if (y < WATER_Y + 0.25) tmp.copy(cSand);
     else if (y < 3) tmp.copy(cPlain).lerp(cGrass, smooth(1.5, 3, y));
-    else if (y < 14) tmp.copy(cGrass).lerp(cHill, smooth(3, 14, y));
-    else tmp.copy(cHill).lerp(cRock, smooth(14, 24, y));
-    if (slope > 0.8) tmp.lerp(cRock, smooth(0.8, 1.4, slope));
-    if (y > 32) tmp.lerp(cSnow, smooth(32, 38, y));
+    else if (y < 9) tmp.copy(cGrass).lerp(cHill, smooth(3, 9, y));
+    else tmp.copy(cHill).lerp(cRock, smooth(9, 15, y));
+    if (slope > 0.8 && y > OUTSIDE_Y + 0.01) tmp.lerp(cRock, smooth(0.8, 1.4, slope));
+    if (y > 19) tmp.lerp(cSnow, smooth(19, 23, y));
     tmp.offsetHSL(0, 0, (hash(i, j) - 0.5) * 0.04);
     col.set([tmp.r, tmp.g, tmp.b], k * 3);
   }
@@ -170,8 +190,6 @@ function groundAt(x, z) { // bilinear on the samples, matches the meshes closely
   g.setIndex(idx); g.computeVertexNormals();
   const terrain = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
   terrain.receiveShadow = true; scene.add(terrain);
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(SIZE, SIZE), new THREE.MeshLambertMaterial({ color: 0x3b7fc4, transparent: true, opacity: 0.8 }));
-  water.rotation.x = -Math.PI / 2; water.position.y = WATER_Y; scene.add(water);
 }
 
 // ---------------------------------------------------------------- physics world
@@ -228,12 +246,12 @@ function label(text, x, z, lift = 10, scale = 1) {
   let fs = 54; do { g.font = `bold ${fs}px JetBrains Mono, monospace`; fs -= 2; } while (g.measureText(text).width > 440 && fs > 20); g.textAlign = 'center'; g.textBaseline = 'middle';
   g.lineWidth = 10; g.strokeStyle = 'rgba(0,0,0,.55)'; g.strokeText(text, 256, 64); g.fillStyle = '#fff'; g.fillText(text, 256, 64);
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthWrite: false }));
-  s.scale.set(24 * scale, 6 * scale, 1); s.position.set(x, groundAt(x, z) + lift, z); scene.add(s); return s;
+  s.scale.set(13 * scale, 3.25 * scale, 1); s.position.set(x, groundAt(x, z) + lift, z); scene.add(s); return s;
 }
-for (const name of ['Torino', 'Susa', 'Lanzo', 'Asti', 'Cuneo', 'Alba', 'Alessandria', 'Novara', 'Vercelli', 'Biella', 'Ivrea', 'Domodossola', 'Balme']) { const [x, z] = XZ(name); label(name, x, z, 16, 0.75); }
-for (const name of ['Monviso', 'Monte Rosa', 'Lago Maggiore']) { const [x, z] = XZ(name); label(name, x, z, 12, 1.3); }
-{ const [x, z] = toXZ(7.2, 45.17); label('Val di Susa', x, z, 10, 0.8); }
-{ const [x, z] = toXZ(7.38, 45.36); label('Valli di Lanzo', x, z, 14, 0.8); }
+for (const name of ['Torino', 'Susa', 'Lanzo', 'Asti', 'Cuneo', 'Alba', 'Alessandria', 'Novara', 'Vercelli', 'Biella', 'Ivrea', 'Domodossola', 'Balme']) { const [x, z] = XZ(name); label(name, x, z, 7, 0.8); }
+for (const name of ['Monviso', 'Monte Rosa', 'Lago Maggiore']) { const [x, z] = XZ(name); label(name, x, z, 9, 1.1); }
+{ const [x, z] = toXZ(7.2, 45.17); label('Val di Susa', x, z, 6, 0.8); }
+{ const [x, z] = toXZ(7.38, 45.36); label('Valli di Lanzo', x, z, 6, 0.8); }
 { // Mole Antonelliana, very much not to scale
   const [x, z] = toXZ(7.693, 45.069), y = groundAt(x, z), m = new THREE.MeshLambertMaterial({ color: 0xd8cfc0, flatShading: true }), g = new THREE.Group();
   const base = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 3), m); base.position.y = 1.25; g.add(base);
@@ -247,7 +265,7 @@ for (const name of ['Monviso', 'Monte Rosa', 'Lago Maggiore']) { const [x, z] = 
   const trees = new THREE.InstancedMesh(tg, tm, 1400); let n = 0; const M = new THREE.Matrix4();
   for (let t = 0; t < 6000 && n < 1400; t++) {
     const x = (hash(t, 7) - 0.5) * (SIZE - 70), z = (hash(t, 13) - 0.5) * (SIZE - 70), y = groundAt(x, z);
-    if (y < 2.5 || y > 26 || fbm(x * 0.04, z * 0.04, 2) < 0.52) continue;
+    if (y < 2.5 || y > 15 || fbm(x * 0.04, z * 0.04, 2) < 0.52) continue;
     const s = 0.7 + hash(t, 3) * 0.8; M.makeScale(s, s, s).setPosition(x, y + 1.2 * s, z); trees.setMatrixAt(n++, M);
   }
   trees.count = n; trees.castShadow = true; scene.add(trees);
@@ -261,8 +279,8 @@ const pickups = CV.map((p, k) => {
   card.position.y = 3; card.castShadow = true; g.add(card);
   const lines = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, 0.3), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   for (const ly of [0.7, 0.25, -0.2, -0.65]) { const l = lines.clone(); l.position.set(0, ly, 0); l.scale.x = ly < -0.5 ? 0.6 : 1; card.add(l); }
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 140, 10, 1, true), new THREE.MeshBasicMaterial({ color: p.color, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, fog: false }));
-  beam.position.y = 70; g.add(beam);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 30, 10, 1, true), new THREE.MeshBasicMaterial({ color: p.color, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  beam.position.y = 15; g.add(beam);
   g.visible = k < 3; scene.add(g);
   return { ...p, group: g, card, got: false };
 });
@@ -285,6 +303,26 @@ const dog = new THREE.Group();
   dog.scale.setScalar(1.25);
   scene.add(dog);
 }
+// ---------------------------------------------------------------- optional glTF models
+const mixers = [];
+function fitModel(root, length, yaw) {
+  root.rotation.y = yaw; root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3());
+  const k = length / Math.max(size.z, size.x, 1e-6); root.scale.multiplyScalar(k); root.updateMatrixWorld(true);
+  const b2 = new THREE.Box3().setFromObject(root), c = b2.getCenter(new THREE.Vector3());
+  root.position.sub(new THREE.Vector3(c.x, b2.min.y, c.z));
+  root.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
+  return root;
+}
+function swapIn(group, gltf, cfg, yOffset, keep = []) {
+  for (const ch of [...group.children]) if (!keep.includes(ch)) ch.visible = false;
+  const holder = new THREE.Group(); holder.add(fitModel(gltf.scene, cfg.length, cfg.yaw)); holder.position.y = yOffset; group.add(holder);
+  if (gltf.animations?.length) { const m = new THREE.AnimationMixer(gltf.scene); m.clipAction(gltf.animations[0]).play(); mixers.push(m); }
+}
+const gltfLoader = new GLTFLoader();
+gltfLoader.load(ASSETS.car.url, g => { swapIn(car, g, ASSETS.car, ASSETS.car.hideWheels ? -1.2 : -0.65, [car.userData.seat]); if (ASSETS.car.hideWheels) wheelMeshes.forEach(w => (w.visible = false)); }, undefined, () => {});
+gltfLoader.load(ASSETS.dog.url, g => { swapIn(dog, g, ASSETS.dog, 0); dog.userData.custom = true; }, undefined, () => {});
+
 let dogState = 'waiting', dogJumpT = 0; const dogJumpFrom = new THREE.Vector3();
 
 // ---------------------------------------------------------------- AR carpet
@@ -348,7 +386,8 @@ const mmBase = (() => { // pre-render the minimap terrain
   const x0 = -215, x1 = 215, z0 = -275, z1 = 275;
   for (let py = 0; py < 190; py++) for (let px = 0; px < 150; px++) {
     const x = x0 + (x1 - x0) * px / 149, z = z0 + (z1 - z0) * py / 189, y = groundAt(x, z), o = (px + py * 150) * 4;
-    const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 3 ? [150, 190, 95] : y < 14 ? [95, 145, 60] : y < 30 ? [140, 130, 120] : [240, 240, 240];
+    if (y <= OUTSIDE_Y + 0.01) continue;
+    const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 3 ? [150, 190, 95] : y < 9 ? [95, 145, 60] : y < 18 ? [140, 130, 120] : [240, 240, 240];
     img.data.set([r, gg, b, 200], o);
   }
   g.putImageData(img, 0, 0); return { c, x0, x1, z0, z1 };
@@ -383,13 +422,22 @@ const clock = new THREE.Clock();
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 const tmpV = new THREE.Vector3(), tmpQ = new THREE.Quaternion();
 let started = false;
-camPos.set(START[0], groundAt(...START) + 8, START[1] + 12);
+camLook.set(START[0], groundAt(...START), START[1]);
 
 function step(dt) {
   const inAir = vehicle.wheelInfos.every(w => !w.isInContact);
   const speed = chassisBody.velocity.length();
-  const engine = started && !cardOpen ? (fwd() ? 1 : back() ? -0.6 : 0) : 0;
-  const steerTarget = started && !cardOpen ? (left() ? 1 : right() ? -1 : 0) * (0.55 - Math.min(0.3, speed * 0.008)) : 0;
+  // screen-relative driving: up = north, right = east (the camera never rotates)
+  const live = started && !cardOpen;
+  const ix = live ? (right() ? 1 : 0) - (left() ? 1 : 0) : 0, iz = live ? (back() ? 1 : 0) - (fwd() ? 1 : 0) : 0;
+  const q0 = chassisBody.quaternion, f = q0.vmult(new CANNON.Vec3(0, 0, 1));
+  let engine = 0, steerTarget = 0;
+  if (ix || iz) {
+    const yaw = Math.atan2(f.x, f.z), want = Math.atan2(ix, iz);
+    let err = want - yaw; while (err > Math.PI) err -= 2 * Math.PI; while (err < -Math.PI) err += 2 * Math.PI;
+    steerTarget = STEER_SIGN * Math.max(-1, Math.min(1, err * 1.6)) * (0.6 - Math.min(0.3, speed * 0.008));
+    engine = Math.abs(err) > 2.4 && speed < 2 ? -0.6 : 1 - Math.min(0.6, Math.abs(err) / 3);
+  }
   for (const i of [2, 3]) vehicle.applyEngineForce(-engine * 650, i);
   for (const i of [0, 1]) vehicle.applyEngineForce(-engine * 300, i);
   for (const i of [0, 1]) vehicle.setSteeringValue(steerTarget, i);
@@ -402,8 +450,13 @@ function step(dt) {
     chassisBody.angularVelocity.vadd(fwdAx.scale(roll * 6 * dt), chassisBody.angularVelocity);
   }
   world.step(1 / 60, dt, 4);
+  const cp = chassisBody.position;
+  if (!inAir && cp.y > OUTSIDE_Y + 3) { safeT += dt; if (safeT > 1) { safeT = 0; lastSafe.copy(cp); } }
+  if (cp.y < OUTSIDE_Y + 1) { chassisBody.position.set(lastSafe.x, groundAt(lastSafe.x, lastSafe.z) + 3, lastSafe.z); chassisBody.velocity.setZero(); chassisBody.angularVelocity.setZero(); toast("That's the end of Piemonte. Back you go!"); }
 }
+let safeT = 0; const lastSafe = new CANNON.Vec3(START[0], 0, START[1]);
 const right_ = right;
+const STEER_SIGN = 1;
 
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
@@ -411,12 +464,9 @@ function frame() {
   // sync visuals
   car.position.copy(chassisBody.position); car.quaternion.copy(chassisBody.quaternion);
   vehicle.wheelInfos.forEach((w, i) => { vehicle.updateWheelTransform(i); wheelMeshes[i].position.copy(w.worldTransform.position); wheelMeshes[i].quaternion.copy(w.worldTransform.quaternion); });
-  // camera: chase from behind, smoothed, never under the ground
-  tmpQ.copy(car.quaternion); const back = tmpV.set(0, 0, -1).applyQuaternion(tmpQ); back.y = 0; if (back.lengthSq() < 1e-3) back.set(0, 0, -1); back.normalize();
-  const want = car.position.clone().addScaledVector(back, 11).add(new THREE.Vector3(0, 5, 0));
-  want.y = Math.max(want.y, groundAt(want.x, want.z) + 2);
-  camPos.lerp(want, 1 - Math.exp(-dt * 4)); camLook.lerp(car.position.clone().add(new THREE.Vector3(0, 1.5, 0)), 1 - Math.exp(-dt * 8));
-  camera.position.copy(camPos); camera.lookAt(camLook);
+  // camera: fixed isometric angle, follows the car smoothly
+  camLook.lerp(car.position, 1 - Math.exp(-dt * 5));
+  camera.position.copy(camLook).add(CAM_OFFSET); camera.lookAt(camLook);
   sun.position.copy(car.position).add(new THREE.Vector3(60, 110, 40)); sun.target.position.copy(car.position);
   // pickups
   for (const p of pickups) {
@@ -435,11 +485,12 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, 0, 0); dog.scale.setScalar(0.85); }
   } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; }
+  for (const m of mixers) m.update(dt);
   updateCarpet(t);
   // HUD
   const fwdV = new THREE.Vector3(0, 0, 1).applyQuaternion(car.quaternion), heading = Math.atan2(fwdV.x, -fwdV.z);
   if (hudOn.speed) $('speed').innerHTML = `${Math.round(chassisBody.velocity.length() * 9)}<small>km/h (oversized)</small>`;
-  if (hudOn.alt) { const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']; const hdg = (heading * 180 / Math.PI + 360) % 360; $('alt').innerHTML = `ALT ${Math.round(Math.max(0, car.position.y) * 95 + 150)} m<br>HDG ${Math.round(hdg)}° ${dirs[Math.round(hdg / 45) % 8]}`; }
+  if (hudOn.alt) { const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']; const hdg = (heading * 180 / Math.PI + 360) % 360; $('alt').innerHTML = `ALT ${Math.round(Math.max(0, car.position.y) * 170 + 150)} m<br>HDG ${Math.round(hdg)}° ${dirs[Math.round(hdg / 45) % 8]}`; }
   if (hudOn.map) drawMinimap(heading);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -453,4 +504,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { chassisBody, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, chassisBody, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };

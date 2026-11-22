@@ -42,7 +42,7 @@
 <canvas id="minimap" class="hud" width="150" height="190"></canvas>
 <div id="alt" class="hud"></div>
 <div id="speed" class="hud"></div>
-<div id="help" class="hud">WASD / arrows: drive · Space: brake · in the air, arrows: flips · R: back on wheels</div>
+<div id="help" class="hud">Arrows / WASD: go that way · Space: brake · in the air, arrows: flips · R: back on wheels</div>
 <div id="toast" class="hud"></div>
 
 <div id="card"><div class="box" id="cardBox"></div></div>
@@ -59,7 +59,7 @@
 </div>
 
 <script type="importmap">
-{ "imports": { "three": "./vendor/three.module.min.js", "cannon-es": "./vendor/cannon-es.min.js" } }
+{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/", "cannon-es": "./vendor/cannon-es.min.js" } }
 </script>
 <script type="module" src="./game.js"></script>
 </body>
