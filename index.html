@@ -73,6 +73,14 @@
       background-color: inherit;
     }
 
+    /* Cool CV button: the page's accent blue; fill vs border contrast matches the other buttons */
+    #cool-cv-btn { background: #0750a7; border-color: #0969da; color: #ffffff; }
+    #cool-cv-btn:hover { background: #06468f; }
+    #cool-cv-btn .cool-cv-wip { background: #ffffff; color: #0750a7; }
+    .dark #cool-cv-btn { background: #1670e0; border-color: #539bf5; color: #ffffff; }
+    .dark #cool-cv-btn:hover { background: #1462c4; }
+    .dark #cool-cv-btn .cool-cv-wip { background: #e6edf3; color: #1462c4; }
+
     /* Lighter text colors for dark mode */
     .dark .text-github-fg-dark {
       color: #e6edf3 !important;
@@ -214,11 +222,10 @@
         </a>
         <button type="button" id="cool-cv-btn"
            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md border-2 transition-colors"
-           style="background:#ff73b6; border-color:#ff1f8e; color:#6e0035" onmouseover="this.style.background='#ff5fab'" onmouseout="this.style.background='#ff73b6'"
            title="Cool CV: drive around a mountain valley to collect my CV (work in progress)">
           <span aria-hidden="true">😎</span>
           <span>Cool CV</span>
-          <span class="px-1.5 py-0.5 text-xs font-mono font-bold rounded" style="background:#a3004f; color:#ffffff">WIP</span>
+          <span class="cool-cv-wip px-1.5 py-0.5 text-xs font-mono font-bold rounded">WIP</span>
         </button>
       </div>
 

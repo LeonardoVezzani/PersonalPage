@@ -284,7 +284,7 @@ const carAxles = [];
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), m(0xe9c9a6)); head.position.y = 0.78; d.add(head);
   const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 10), m(0xcf222e)); cap.position.y = 0.95; d.add(cap);
   d.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  d.position.set(0.32, 0.36, 0.15); car.add(d); car.userData.driver = d;
+  d.position.set(0.32, 0.2, 0.15); car.add(d); car.userData.driver = d;
 }
 car.userData.seat = new THREE.Object3D(); car.userData.seat.position.set(0, -0.32, -1.1); car.add(car.userData.seat); // the back of the crawler
 const wheelMeshes = WHEELS.map(() => {
@@ -387,26 +387,21 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
     let best = null; for (let r = CELL; r <= 16 && !best; r += CELL) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, x = route[w][0] + Math.cos(a) * r, z = route[w][1] + Math.sin(a) * r; if (!blocked[idx(x, z)]) { best = [x, z]; break; } }
     if (best) route[w] = best;
   }
+  for (let w = route.length - 2; w >= 1; w--) { // drop a waypoint that would make the carpet double back on itself
+    const a = route[w - 1], q = route[w], c = route[w + 1], v1x = q[0] - a[0], v1z = q[1] - a[1], v2x = c[0] - q[0], v2z = c[1] - q[1];
+    if (Math.abs(Math.atan2(v1x * v2z - v1z * v2x, v1x * v2x + v1z * v2z)) > 1.6) route.splice(w, 1); }
   let dense = [route[0]];
   for (let w = 0; w < route.length - 1; w++) dense.push(...astar(route[w], route[w + 1]).slice(1)); // chain A* between the waypoints
-  for (let k = 0; k < 4; k++) for (let i = 1; i < dense.length - 1; i++) { // smooth, but never into a blocked cell
-    const a = dense[i - 1], c = dense[i + 1], q = dense[i], nx = (a[0] + q[0] * 2 + c[0]) / 4, nz = (a[1] + q[1] * 2 + c[1]) / 4;
-    if (!blocked[idx(nx, nz)]) { q[0] = nx; q[1] = nz; } }
-  { // smooth the end: from the sharpest bend in the last part of the route, one clean curve up to the summit
-    let kMax = -1, aMax = 0;
-    for (let i = Math.floor(dense.length * 0.5); i < dense.length - 2; i++) {
-      const a = dense[i - 2], b = dense[i], c = dense[i + 2]; if (!a || !c) continue;
-      const v1x = b[0] - a[0], v1z = b[1] - a[1], v2x = c[0] - b[0], v2z = c[1] - b[1];
-      const ang = Math.abs(Math.atan2(v1x * v2z - v1z * v2x, v1x * v2x + v1z * v2z)); if (ang > aMax) { aMax = ang; kMax = i; }
-    }
-    if (kMax > 3) {
-      const start = kMax - 3, P0 = dense[start], prev = dense[start - 2] || dense[0], end = dense[dense.length - 1];
-      let tx = P0[0] - prev[0], tz = P0[1] - prev[1]; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
-      const L = Math.hypot(end[0] - P0[0], end[1] - P0[1]), C = [P0[0] + tx * L * 0.45, P0[1] + tz * L * 0.45];
-      const n = Math.max(6, Math.ceil(L / 2.5)), curve = [];
-      for (let k = 1; k <= n; k++) { const t = k / n, u = 1 - t; curve.push([u * u * P0[0] + 2 * u * t * C[0] + t * t * end[0], u * u * P0[1] + 2 * u * t * C[1] + t * t * end[1]]); }
-      dense = [...dense.slice(0, start + 1), ...curve];
-    }
+  { // resample at an even step, then relax the line many times so every bend is a wide curve, never into a blocked cell
+    const STEP = 1.5, even = [dense[0]]; let carry = 0;
+    for (let i = 1; i < dense.length; i++) { const a = dense[i - 1], c = dense[i], L = Math.hypot(c[0] - a[0], c[1] - a[1]);
+      for (let d = STEP - carry; d < L; d += STEP) even.push([a[0] + (c[0] - a[0]) * d / L, a[1] + (c[1] - a[1]) * d / L]);
+      carry = (carry + L) % STEP; }
+    even.push([...dense[dense.length - 1]]); dense = even;
+    const near = (x, z) => SCENERY.houses.some(hs => Math.hypot(x - hs.x, z - hs.z) < 5.5 + hs.sc * 1.5) || (Math.hypot(x, z) > rimAt(x, z) - 10 && Math.hypot(x - exp.pos[0], z - exp.pos[1]) > 12); // a little closer to the houses than the planner, the summit itself is outside the rim
+    for (let k = 0; k < 160; k++) for (let i = 1; i < dense.length - 1; i++) {
+      const a = dense[i - 1], c = dense[i + 1], q = dense[i], nx = (a[0] + q[0] + c[0]) / 3, nz = (a[1] + q[1] + c[1]) / 3;
+      if (!near(nx, nz)) { q[0] = nx; q[1] = nz; } }
   }
   CARPET_ROUTE.length = 0; CARPET_ROUTE.push(...dense); }
 const pickups = CV.map((p, k) => {
@@ -702,13 +697,15 @@ const EMBEDDED = new URLSearchParams(location.search).has('embedded') && window.
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyC', 'KeyH', 'Enter'];
 window.addEventListener('keydown', e => {
   if (GAME_KEYS.includes(e.code)) e.preventDefault();
+  if (cardOpen) { if (!e.repeat && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) closeCard(); return; } // keys pressed over a card never drive the crawler
   const first = !keys[e.code]; keys[e.code] = true;
-  if (cardOpen) { if (first && (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape')) closeCard(); return; }
   if (!started) return;
   if (first && e.code === 'KeyC') toggleMode();
   if (first && (e.code === 'KeyH' || e.code === 'Space')) honk();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
+const releaseKeys = () => { for (const k in keys) keys[k] = false; }; // a key released while the page had the focus never reaches us
+window.addEventListener('blur', releaseKeys); document.addEventListener('visibilitychange', releaseKeys);
 const fwd = () => keys.ArrowUp, back = () => keys.ArrowDown, left = () => keys.ArrowLeft, right = () => keys.ArrowRight;
 function toggleMode() {
   driveMode = driveMode === 'map' ? 'car' : 'map';
@@ -722,15 +719,15 @@ const $ = id => document.getElementById(id);
 function updateFrags() { const got = pickups.filter(q => q.got).length; for (let i = 0; i < 4; i++) $('arc' + i).classList.toggle('got', i < got); $('fragCount').textContent = `${got} / 4`; }
 let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 2600); }
 let cardOpen = false;
-function openCard(html) { $('cardBox').innerHTML = html; $('card').style.display = 'flex'; cardOpen = true; }
+function openCard(html) { releaseKeys(); $('cardBox').innerHTML = html; $('card').style.display = 'flex'; cardOpen = true; }
 function closeCard() {
   if (EMBEDDED) { window.parent.postMessage({ type: 'coolcv:close-card' }, location.origin); return; } // the page answers with coolcv:resume
-  $('card').style.display = 'none'; cardOpen = false; canvas.focus();
+  releaseKeys(); $('card').style.display = 'none'; cardOpen = false; canvas.focus();
 }
-window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.type === 'coolcv:resume') { cardOpen = false; canvas.focus(); } });
+window.addEventListener('message', e => { if (e.origin === location.origin && e.data && e.data.type === 'coolcv:resume') { releaseKeys(); cardOpen = false; canvas.focus(); } });
 function showFragment(p, unlock, extraHtml) {
   const n = pickups.filter(q => q.got).length;
-  if (EMBEDDED) { cardOpen = true; window.parent.postMessage({ type: 'coolcv:fragment', id: p.id, title: p.title, unlock, n, last: p.id === 'exp' }, location.origin); return; }
+  if (EMBEDDED) { releaseKeys(); cardOpen = true; window.parent.postMessage({ type: 'coolcv:fragment', id: p.id, title: p.title, unlock, n, last: p.id === 'exp' }, location.origin); return; }
   openCard(`<h2>${p.title}</h2><div class="unlock">Fragment ${n} / 4 · ${unlock}</div>${p.html}${extraHtml}<div class="btns"><button data-close>Continue (Enter / Space)</button></div>`);
 }
 $('card').addEventListener('click', e => { if (e.target.id === 'card' || e.target.dataset.close !== undefined) closeCard(); });
