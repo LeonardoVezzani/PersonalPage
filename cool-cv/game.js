@@ -42,22 +42,29 @@ function ridge(x, y) { let f = 0, amp = 0.55, fr = 1; for (let i = 0; i < 4; i++
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // ---------------------------------------------------------------- geography
-const polar = (deg, r) => [Math.cos(deg * Math.PI / 180) * r, Math.sin(deg * Math.PI / 180) * r];
+// The map is designed in "map space" and turned 90° anticlockwise on screen into world space,
+// so the final mountain stands at the back of the valley, seen from the front by the camera.
+const toWorld = (mx, mz) => [mz, -mx], toMap = (x, z) => [-z, x];
+const polarMap = (deg, r) => [Math.cos(deg * Math.PI / 180) * r, Math.sin(deg * Math.PI / 180) * r];
+const polar = (deg, r) => toWorld(...polarMap(deg, r)); // world position of a map-space polar coordinate
 const R_EDGE = 112;
 const edgeR = a => R_EDGE * (1 + 0.06 * Math.sin(3 * a + 0.7) + 0.04 * Math.sin(5 * a + 2.1));
-const BORDER = Array.from({ length: 120 }, (_, i) => { const a = i / 120 * Math.PI * 2, r = edgeR(a); return [Math.cos(a) * r, Math.sin(a) * r]; });
+const BORDER = Array.from({ length: 120 }, (_, i) => { const a = i / 120 * Math.PI * 2, r = edgeR(a); return toWorld(Math.cos(a) * r, Math.sin(a) * r); });
+const rimAt = (x, z) => { const [mx, mz] = toMap(x, z); return edgeR(Math.atan2(mz, mx)); }; // board radius in the direction of a world point
 function distSegs(x, z, segs) { let best = 1e9; for (const [[ax, az], [bx, bz]] of segs) { const dx = bx - ax, dz = bz - az; let t = ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1); t = t < 0 ? 0 : t > 1 ? 1 : t; const d = Math.hypot(x - ax - t * dx, z - az - t * dz); if (d < best) best = d; } return best; }
-const inside = (x, z) => Math.hypot(x, z) < edgeR(Math.atan2(z, x));
+const inside = (x, z) => Math.hypot(x, z) < rimAt(x, z);
 const OUTSIDE_Y = -8;
-const SUMMIT = polar(30, 86);             // the highest peak of the ring: the last CV piece sits on top
-const LAKE = { x: -22, z: -14, r: 15 };    // a lake in the valley
-function height(x, z) {
-  if (!inside(x, z)) return OUTSIDE_Y;
+const SUMMIT_M = polarMap(30, 86), SUMMIT = toWorld(...SUMMIT_M); // the highest peak of the ring: the last CV piece sits on top
+const LAKE_M = { x: -22, z: -14, r: 15 }; // a lake in the valley (map space)
+const LAKE = (() => { const [x, z] = toWorld(LAKE_M.x, LAKE_M.z); return { x, z, r: LAKE_M.r }; })();
+function height(wx, wz) {
+  if (!inside(wx, wz)) return OUTSIDE_Y;
+  const [x, z] = toMap(wx, wz); // the terrain is defined in map space
   const rr = Math.hypot(x, z) / edgeR(Math.atan2(z, x));             // 0 at the centre, 1 at the rim
   let h = 1 + fbm(x * 0.012 + 3, z * 0.012, 2) * 1.6;                  // a wide, gently rolling valley floor
   h += smooth(0.42, 0.8, rr) * (5 + 14 * Math.pow(ridge(x * 0.02, z * 0.02), 1.6)); // the mountain ring: separate peaks
-  const ds = Math.hypot(x - SUMMIT[0], z - SUMMIT[1]); h += 9 * Math.exp(-(ds * ds) / (2 * 8 * 8));
-  const dl = Math.hypot(x - LAKE.x, z - LAKE.z) / LAKE.r; if (dl < 1.4) h = Math.min(h, -1 + 2.2 * smooth(0.6, 1.4, dl) + (h - 1.2) * smooth(1, 1.4, dl));
+  const ds = Math.hypot(x - SUMMIT_M[0], z - SUMMIT_M[1]); h += 9 * Math.exp(-(ds * ds) / (2 * 8 * 8));
+  const dl = Math.hypot(x - LAKE_M.x, z - LAKE_M.z) / LAKE_M.r; if (dl < 1.4) h = Math.min(h, -1 + 2.2 * smooth(0.6, 1.4, dl) + (h - 1.2) * smooth(1, 1.4, dl));
   return h;
 }
 
@@ -72,7 +79,7 @@ const CV = [
   { id: 'exp', title: 'Experience', where: 'the highest summit of the ring', pos: SUMMIT, color: 0xcf222e, unlock: 'HUD complete',
     html: `<ul><li><b>PhD researcher</b>, Politecnico di Torino (2022 – present): conceived CARLA-IVR, cutting immersive study setup from about a month to under a week; opened 8 industry and research collaborations</li><li><b>Co-lecturer &amp; thesis supervisor</b> (2023 – present): 7 master theses, 11 interdisciplinary student teams in industry challenges</li><li><b>Visiting researcher</b>, Computer Vision Center, Barcelona (2025)</li><li><b>Research assistant</b>, Reply (2023 – 2025)</li></ul>` },
 ];
-const CARPET_ROUTE = [[0, 8], polar(30, 40), polar(30, 66), SUMMIT];
+const CARPET_ROUTE = [];
 const DOG_POS = polar(150, 34); // somewhere in the valley
 const PDF_URL = '../CV_Vezzani_Printable.pdf';
 
@@ -279,7 +286,7 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
 // Houses stand in small solid groups; trees (in groves and loose) can be driven through.
 {
   const keepClear = [START, DOG_POS, ...CV.map(c => c.pos)];
-  const free = (x, z, r) => inside(x, z) && Math.hypot(x, z) < edgeR(Math.atan2(z, x)) - 8 && keepClear.every(([px, pz]) => Math.hypot(x - px, z - pz) > r) && Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.r * 1.3;
+  const free = (x, z, r) => inside(x, z) && Math.hypot(x, z) < rimAt(x, z) - 8 && keepClear.every(([px, pz]) => Math.hypot(x - px, z - pz) > r) && Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.r * 1.3;
   const solid = (x, y, z, hx, hy, hz, rot) => { const b = new CANNON.Body({ mass: 0 }); b.addShape(new CANNON.Box(new CANNON.Vec3(hx, hy, hz))); b.position.set(x, y + hy, z); b.quaternion.setFromEuler(0, rot, 0); world.addBody(b); };
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), V = new THREE.Vector3(), C = new THREE.Color(), Y = new THREE.Vector3(0, 1, 0);
   // hamlets
@@ -332,14 +339,11 @@ const SCENERY = { houses: [], trees: [], houseMeshes: [], treeMesh: null };
 { const exp = CV.find(c => c.id === 'exp'); let [bx, bz] = exp.pos, best = -1e9;
   for (let dx = -5; dx <= 5; dx += 0.5) for (let dz = -5; dz <= 5; dz += 0.5) { const h = groundAt(exp.pos[0] + dx, exp.pos[1] + dz); if (h > best) { best = h; bx = exp.pos[0] + dx; bz = exp.pos[1] + dz; } }
   exp.pos = [bx, bz];
-  // the carpet circles the mountain on the way up instead of going straight for the top
-  const route = [[0, 8], polar(30, 40)], a0 = Math.atan2(-bz, -bx);
-  for (let t = 0; t <= 1.0001; t += 1 / 30) {
-    let r = 22 * (1 - t) + 3; const a = a0 + t * Math.PI * 2.4; let px = bx + Math.cos(a) * r, pz = bz + Math.sin(a) * r;
-    while (Math.hypot(px, pz) > edgeR(Math.atan2(pz, px)) - 9 && r > 3) { r -= 1; px = bx + Math.cos(a) * r; pz = bz + Math.sin(a) * r; }
-    route.push([px, pz]);
-  }
-  route.push([bx, bz]); CARPET_ROUTE.length = 0; CARPET_ROUTE.push(...route); }
+  // the carpet comes in from the side: it runs along the foot of the mountain, then climbs across its face to the top
+  const side = bx > 0 ? -1 : 1; // approach from the side that faces the middle of the board
+  const route = [START, [bx + side * 40, bz + 26], [bx + side * 30, bz + 14], [bx + side * 20, bz + 7], [bx + side * 10, bz + 2], [bx, bz]]
+    .map(([x, z]) => { const r = Math.hypot(x, z), m = rimAt(x, z) - 10; return r > m ? [x * m / r, z * m / r] : [x, z]; });
+  route[route.length - 1] = [bx, bz]; CARPET_ROUTE.length = 0; CARPET_ROUTE.push(...route); }
 const pickups = CV.map((p, k) => {
   const [x, z] = p.pos, y = groundAt(x, z);
   const g = new THREE.Group(); g.position.set(x, y, z);
@@ -368,7 +372,7 @@ const dog = new THREE.Group();
   dog.userData.tail = add(new THREE.BoxGeometry(0.1, 0.1, 0.5), fur, 0, 0.95, -0.7);
   dog.userData.head = head;
   dog.position.set(DOG_POS[0], groundAt(...DOG_POS), DOG_POS[1]);
-  dog.scale.setScalar(4.4);
+  dog.scale.setScalar(3.3);
   scene.add(dog);
 }
 // ---------------------------------------------------------------- optional glTF models
@@ -660,7 +664,7 @@ const mmBase = (() => { // pre-render the minimap terrain
   const x0 = -122, x1 = 122, z0 = -122, z1 = 122;
   for (let py = 0; py < 190; py++) for (let px = 0; px < 150; px++) {
     const x = x0 + (x1 - x0) * px / 149, z = z0 + (z1 - z0) * py / 189, y = groundAt(x, z), o = (px + py * 150) * 4;
-    if (!inside(x, z) || Math.hypot(x, z) > edgeR(Math.atan2(z, x)) - 2) continue;
+    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 2) continue;
     const [r, gg, b] = y < WATER_Y ? [59, 127, 196] : y < 2.2 ? [150, 190, 95] : y < 6 ? [95, 145, 60] : y < 15 ? [140, 130, 120] : [240, 240, 240];
     img.data.set([r, gg, b, 245], o);
   }
@@ -773,8 +777,8 @@ function frame() {
   } else if (dogState === 'jumping') {
     dogJumpT += dt / 0.7; const to = car.userData.seat.getWorldPosition(new THREE.Vector3());
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
-    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, 0, 0); dog.scale.setScalar(4.4 / CAR_SCALE); } // same size as on the ground, standing in the rear bed, facing forward
-  } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; dog.rotation.y = Math.sin(t * 0.7) * 0.25; }
+    if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 / CAR_SCALE); } // same size as on the ground, standing across the rear bed
+  } else { dog.userData.tail.rotation.y = Math.sin(t * 12) * 0.7; dog.userData.head.rotation.y = Math.sin(t * 1.3) * 0.5; dog.rotation.y = Math.PI / 2 + Math.sin(t * 0.7) * 0.15; }
   { // fade the border cliffs when they stand between the camera (south) and the car
     const cx = car.position.x, cz = car.position.z; let hide = false;
     for (const [bx, bz] of BORDER) if (bz > cz && bz - cz < 20 && Math.abs(bx - cx) < 10) { hide = true; break; }
