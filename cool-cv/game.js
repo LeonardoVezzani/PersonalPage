@@ -571,16 +571,54 @@ function updateBoxes(t) {
     if (k >= 1) { b.scale.copy(B); delete b.userData.popAt; }
   }
 }
-let hitToastT = 0;
+// comic hits: a starburst at the point of contact and a speech balloon from whoever got bumped
+const SHEEP_LINES = ['Baaaah!', 'Beeeh!'], PEOPLE_LINES = ['Aiah!', 'Ocio!', 'Maremma serpente!', 'Boia deh!', 'O bischero!', 'Icché tu fai?!', 'Bada lì!'];
+const BANGS = ['SBAM!', 'BONK!', 'TUMP!', 'POF!'];
+let sheepN = 0, lastLine = '';
+const comicLayer = document.createElement('div'); comicLayer.className = 'hud'; comicLayer.style.inset = '0'; document.body.appendChild(comicLayer);
+const BURST = (() => { let d = ''; for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, r = i % 2 ? 26 : 48 + (i % 4 ? 0 : 6); d += (i ? 'L' : 'M') + (50 + Math.cos(a) * r).toFixed(1) + ' ' + (50 + Math.sin(a) * r).toFixed(1); } return d + 'Z'; })();
+const BANG_T = 0.5, BALLOON_T = 1.5; // seconds on screen
+const bangs = new Map(), balloons = new Map(); // walker → its one bang and its one balloon (a new hit replaces them)
+const now = () => performance.now() / 1000; // real seconds, not the clamped game clock
+function comicHit(w, cp) {
+  const wp = w.g.position;
+  // the bang: fixed at the point of contact
+  const bang = document.createElement('div'); bang.className = 'comic';
+  bang.innerHTML = `<svg class="burst" viewBox="0 0 100 100" style="--r:${(Math.random() * 40 - 20).toFixed(0)}deg"><path d="${BURST}"/><text x="50" y="57" text-anchor="middle">${BANGS[Math.random() * BANGS.length | 0]}</text></svg>`;
+  const oldBang = bangs.get(w); if (oldBang) oldBang.el.remove();
+  comicLayer.appendChild(bang); bangs.set(w, { el: bang, at: new THREE.Vector3((wp.x + cp.x) / 2, wp.y + 1.2, (wp.z + cp.z) / 2), t0: now() });
+  // the balloon: one per walker, a new hit replaces the old one
+  let line;
+  if (w.kind === 'sheep') line = SHEEP_LINES[sheepN++ % 2];
+  else { do line = PEOPLE_LINES[Math.random() * PEOPLE_LINES.length | 0]; while (line === lastLine); lastLine = line; }
+  const old = balloons.get(w); if (old) old.el.remove();
+  const el = document.createElement('div'); el.className = 'comic';
+  el.innerHTML = `<div class="balloon ${w.kind}" style="--fx:${Math.random() < 0.5 ? -1 : 1};--tilt:${(Math.random() * 10 - 5).toFixed(1)}deg"><span>${line}</span></div>`;
+  comicLayer.appendChild(el); balloons.set(w, { el, t0: now() });
+}
+const cProj = new THREE.Vector3();
+function placeAt(el, v) { cProj.copy(v).project(camera); el.style.left = ((cProj.x + 1) / 2 * 100) + '%'; el.style.top = ((1 - cProj.y) / 2 * 100) + '%'; }
+const fade = (t, life, f) => String(Math.max(0, Math.min(1, (life - t) / f)));
+function updateComics() {
+  const tn = now();
+  for (const [w, c] of bangs) {
+    const t = tn - c.t0; if (t > BANG_T) { c.el.remove(); bangs.delete(w); continue; }
+    placeAt(c.el, c.at); c.el.style.opacity = fade(t, BANG_T, 0.12);
+  }
+  for (const [w, c] of balloons) {
+    const t = tn - c.t0; if (t > BALLOON_T) { c.el.remove(); balloons.delete(w); continue; }
+    cProj.copy(w.g.position); cProj.y += 1.6; placeAt(c.el, cProj); c.el.style.opacity = fade(t, BALLOON_T, 0.25); // rides on the walker's head
+  }
+}
 function updateWalkers(dt, t) {
-  const cp = chassisBody.position; hitToastT -= dt;
+  const cp = chassisBody.position; 
   for (const w of walkers) {
     const p = w.g.position;
     if (w.knocked > 0) { // tipped over by the crawler: lie down, then get back up
       w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
     }
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
-    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person', 0.7); if (hitToastT <= 0) { toast(w.kind === 'sheep' ? 'Baa! Mind the sheep' : 'Hey! Watch where you drive'); hitToastT = 3; } chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person', 0.7); comicHit(w, cp); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
     if (w.scared > 0) { w.scared -= dt; speed *= 3; }
     else if (dc < 11) { // step aside when the crawler gets close
@@ -957,7 +995,7 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateConfetti(dt);
+  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);

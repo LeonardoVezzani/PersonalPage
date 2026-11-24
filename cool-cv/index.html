@@ -64,6 +64,19 @@
   #newAdd b { display: block; font-size: 11px; color: #e3b341; letter-spacing: .3px; } #newAdd span { display: block; font-size: 13px; font-weight: 700; color: #fff; }
   #newAdd.pop { animation: popAbove .6s ease-out both; transform-origin: bottom center; }
   @keyframes popAbove { 0% { transform: translate(-50%, -100%) scale(0); opacity: 0; } 45% { transform: translate(-50%, -100%) scale(1.15); opacity: 1; } 70% { transform: translate(-50%, -100%) scale(.94); } 100% { transform: translate(-50%, -100%) scale(1); } }
+  /* comic hits: a starburst at the point of contact, a speech balloon above it */
+  .comic { position: absolute; width: 0; height: 0; }
+  .comic .burst { position: absolute; width: 58px; height: 58px; left: -29px; top: -29px; overflow: visible; animation: burstPop .2s cubic-bezier(.3,1.8,.5,1) both; }
+  .comic .burst path { fill: #ffd23f; stroke: #1b1b1b; stroke-width: 4; stroke-linejoin: round; }
+  .comic .burst text { font: 900 19px "Bangers", "Comic Sans MS", "Chalkboard SE", "Comic Neue", Impact, sans-serif; fill: #d7263d; stroke: #1b1b1b; stroke-width: 1.2px; paint-order: stroke; letter-spacing: -.5px; }
+  @keyframes burstPop { 0% { transform: rotate(var(--r)) scale(0); } 100% { transform: rotate(var(--r)) scale(1); } }
+  .comic .balloon { position: absolute; bottom: 26px; left: calc(var(--fx) * 22px); transform: translateX(-50%) rotate(var(--tilt)); padding: 6px 12px 7px; background: #fff; border: 3px solid #1b1b1b; border-radius: 50% / 45%; white-space: nowrap; box-shadow: 3px 3px 0 #1b1b1b; animation: balloonPop .35s .05s cubic-bezier(.3,1.7,.5,1) both; }
+  .comic .balloon::after { content: ''; position: absolute; bottom: -14px; left: calc(50% - var(--fx) * 14px - 8px); border: 8px solid transparent; border-top: 14px solid #1b1b1b; border-bottom: 0; transform: skewX(calc(var(--fx) * 25deg)); }
+  .comic .balloon::before { content: ''; position: absolute; bottom: -8px; left: calc(50% - var(--fx) * 14px - 4px); border: 5px solid transparent; border-top: 9px solid #fff; border-bottom: 0; transform: skewX(calc(var(--fx) * 25deg)); z-index: 1; }
+  .comic .balloon span { font: 900 16px "Bangers", "Comic Sans MS", "Chalkboard SE", "Comic Neue", Impact, sans-serif; color: #1b1b1b; letter-spacing: .3px; }
+  .comic .balloon.sheep span { font-style: italic; font-size: 17px; }
+  @keyframes balloonPop { 0% { transform: translateX(-50%) rotate(var(--tilt)) scale(0); opacity: 0; } 100% { transform: translateX(-50%) rotate(var(--tilt)) scale(1); opacity: 1; } }
+  @media (max-width: 520px) { .comic .balloon span { font-size: 13px; } .comic .burst { width: 46px; height: 46px; left: -23px; top: -23px; } }
   /* narrow portrait screens (phones): smaller HUD, the banner beside the minimap */
   @media (max-width: 520px) {
     #minimap { width: 104px; height: 132px; }
@@ -131,6 +144,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=29"></script>
+<script type="module" src="./game.js?v=31"></script>
 </body>
 </html>
