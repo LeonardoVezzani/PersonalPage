@@ -1036,12 +1036,12 @@ function frame() {
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
   if (hudOn.speed) { // needle: 0 → slow → fast → super fast, shaking with the bumps of the ground and a little at random
     const r = chassisBody.velocity.length() / VMAX;
-    if (!superOn && r >= 1.25) { superOn = true; superEl.classList.remove('boom'); void superEl.getBoundingClientRect(); superEl.classList.add('boom'); }
-    else if (superOn && r < 1.1) superOn = false; // re-arm once well below the red
+    if (!superOn && r >= 1.35) { superOn = true; superEl.classList.remove('boom'); void superEl.getBoundingClientRect(); superEl.classList.add('boom'); }
+    else if (superOn && r < 1.15) superOn = false; // re-arm once well below the red
     const base = r <= 0.5 ? -90 + r / 0.5 * 30 : r <= 1 ? -60 + (r - 0.5) / 0.5 * 60 : (Math.min(1.5, r) - 1) / 0.5 * 60;
     const bump = Math.min(14, Math.abs(car.position.y - lastCarY) / Math.max(dt, 1e-3) * 2.5); lastCarY = car.position.y;
     needleJ += ((Math.random() - 0.5) * (r > 0.1 ? 10 : 1) + (Math.random() < 0.5 ? -bump : bump) - needleJ) * Math.min(1, dt * 12);
-    const a = Math.round((base + needleJ) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 60 65)`); }
+    const a = Math.round((base + needleJ) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 55.14 65)`); }
   }
   if (hudOn.map) drawMinimap(heading);
   if (MOBILE) renderer.shadowMap.needsUpdate = (frameNo++ & 1) === 0;
