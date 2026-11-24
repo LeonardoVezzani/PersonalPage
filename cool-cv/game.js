@@ -1006,7 +1006,7 @@ function syncCar() { // position and orientation a fraction of the way from the 
 let wheelSpin = 0;
 const ZF = new CANNON.Vec3(0, 0, 1), zfW = new CANNON.Vec3(), SUN_OFF = new THREE.Vector3(60, 110, 40), fwdV = new THREE.Vector3(), seatW = new THREE.Vector3(); // reused every frame
 const speedEl = $('speed'), needleEl = $('needle'); let speedShown = -999, needleJ = 0, lastCarY = 0;
-const superEl = $('superTxt'); let superOn = false; // the SUPER FAST! label bursts when the needle enters the red
+const superEl = $('superTxt'), shakeEl = $('superShake'); let superOn = false; // the SUPER FAST! label bursts when the needle enters the red
 
 let onScreen = true; // skip the work while the game is scrolled out of view (or its tab is hidden)
 new IntersectionObserver(e => { onScreen = e[0].isIntersecting; }).observe(canvas);
@@ -1046,12 +1046,13 @@ function frame() {
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
   if (hudOn.speed) { // needle: 0 → slow → fast → super fast, shaking with the bumps of the ground and a little at random
     const r = chassisBody.velocity.length() / VMAX;
-    if (!superOn && r >= 1.35) { superOn = true; superEl.classList.remove('boom'); void superEl.getBoundingClientRect(); superEl.classList.add('boom'); }
-    else if (superOn && r < 1.15) superOn = false; // re-arm once well below the red
+    if (!superOn && r >= 1.35) { superOn = true; superEl.classList.remove('boom'); void superEl.getBoundingClientRect(); superEl.classList.add('boom'); shakeEl.classList.add('shake'); }
+    else if (superOn && r < 1.15) { superOn = false; shakeEl.classList.remove('shake'); } // re-arm once well below the red
     const base = r <= 0.5 ? -90 + r / 0.5 * 30 : r <= 1 ? -60 + (r - 0.5) / 0.5 * 60 : (Math.min(1.5, r) - 1) / 0.5 * 60;
     const bump = Math.min(14, Math.abs(car.position.y - lastCarY) / Math.max(dt, 1e-3) * 2.5); lastCarY = car.position.y;
-    needleJ += ((Math.random() - 0.5) * (r > 0.1 ? 10 : 1) + (Math.random() < 0.5 ? -bump : bump) - needleJ) * Math.min(1, dt * 12);
-    const a = Math.round((base + needleJ) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 55.14 65)`); }
+    needleJ += ((Math.random() - 0.5) * (superOn ? 26 : r > 0.1 ? 10 : 1) + (Math.random() < 0.5 ? -bump : bump) - needleJ) * Math.min(1, dt * 12);
+    const wob = superOn ? Math.sin(t * 47) * 3.5 + Math.sin(t * 29) * 2.5 : 0; // at SUPER FAST the needle shudders against the stop
+    const a = Math.round((base + needleJ + wob) * 2) / 2; if (a !== speedShown) { speedShown = a; needleEl.setAttribute('transform', `rotate(${a} 55.14 65)`); }
   }
   if (hudOn.map) drawMinimap(heading);
   if (MOBILE) renderer.shadowMap.needsUpdate = (frameNo++ & 1) === 0;
