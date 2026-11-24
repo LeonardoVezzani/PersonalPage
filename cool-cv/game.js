@@ -534,25 +534,59 @@ const walkers = [];
     g.add(solidBody([[new THREE.BoxGeometry(1.3, 1.0, 1.9), PAL.snow, 0, 1.15, 0], [new THREE.BoxGeometry(0.6, 0.6, 0.6), 0x353335, 0, 1.45, 1.15], ...legs]));
     g.add(frame(1.8, 2.0, 2.8)); return g;
   }
-  function person(shirt) {
-    const g = new THREE.Group();
-    g.add(solidBody([[new THREE.CylinderGeometry(0.42, 0.5, 1.3, 8), shirt, 0, 1.35, 0], [new THREE.SphereGeometry(0.38, 10, 8), 0xe9c9a6, 0, 2.3, 0],
-      ...[-0.2, 0.2].map(x => [new THREE.BoxGeometry(0.24, 0.75, 0.26), 0x353335, x, 0.38, 0])]));
-    g.add(frame(1.3, 2.8, 1.3)); return g;
+  // people: bodies of different shapes, different skin tones; some get about in a wheelchair
+  const SKINS = [0xf3d6bd, 0xe9c19c, 0xd29a6f, 0xae7448, 0x8a5634, 0x5f3a22, 0x40271a];
+  const TROUSERS = [0x353335, 0x2c3b55, 0x4a3b2c, 0x3d4a3a];
+  const BODIES = { // the torso: [geometry, its height]
+    cylinder: () => new THREE.CylinderGeometry(0.42, 0.5, 1.3, 8),
+    coneUp: () => new THREE.CylinderGeometry(0.08, 0.66, 1.4, 10),   // apex up
+    coneDown: () => new THREE.CylinderGeometry(0.68, 0.1, 1.4, 10),  // apex down: broad shoulders
+    prism3: () => new THREE.CylinderGeometry(0.62, 0.62, 1.3, 3),
+    prism4: () => new THREE.BoxGeometry(0.85, 1.3, 0.62),
+    prism6: () => new THREE.CylinderGeometry(0.5, 0.5, 1.3, 6),
+  };
+  const SHAPES = Object.keys(BODIES);
+  function person(shirt, skin, shape, legs) {
+    const g = new THREE.Group(), tall = shape.startsWith('cone') ? 1.4 : 1.3, top = 0.72 + tall;
+    g.add(solidBody([[BODIES[shape](), shirt, 0, 0.72 + tall / 2, 0], [new THREE.SphereGeometry(0.38, 10, 8), skin, 0, top + 0.3, 0],
+      ...[-0.2, 0.2].map(x => [new THREE.BoxGeometry(0.24, 0.75, 0.26), legs, x, 0.38, 0])]));
+    g.add(frame(1.4, top + 0.75, 1.4)); return g;
   }
+  function wheelchair(shirt, skin, legs) { // seated, facing +z like everyone else; big rear wheels, small casters in front
+    const g = new THREE.Group(), metal = 0x4a4f57, tyre = 0x232325, seat = 0x2f6fb5;
+    const wheel = x => [new THREE.TorusGeometry(0.55, 0.09, 6, 16).rotateY(Math.PI / 2), tyre, x, 0.62, -0.15];
+    const hub = x => [new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8).rotateZ(Math.PI / 2), metal, x, 0.62, -0.15];
+    const caster = x => [new THREE.CylinderGeometry(0.16, 0.16, 0.08, 8).rotateZ(Math.PI / 2), tyre, x, 0.16, 0.62];
+    g.add(solidBody([
+      wheel(-0.62), wheel(0.62), hub(-0.62), hub(0.62), caster(-0.42), caster(0.42),
+      [new THREE.BoxGeometry(1.0, 0.12, 0.9), seat, 0, 0.78, 0],                 // seat
+      [new THREE.BoxGeometry(1.0, 0.85, 0.1), seat, 0, 1.25, -0.48],             // backrest
+      [new THREE.BoxGeometry(0.08, 0.6, 0.08), metal, -0.46, 0.45, 0.42], [new THREE.BoxGeometry(0.08, 0.6, 0.08), metal, 0.46, 0.45, 0.42], // front legs of the frame
+      [new THREE.BoxGeometry(0.8, 0.06, 0.25), metal, 0, 0.18, 0.78],            // footrest
+      [new THREE.CylinderGeometry(0.4, 0.44, 0.95, 8), shirt, 0, 1.33, -0.12],   // torso
+      [new THREE.SphereGeometry(0.36, 10, 8), skin, 0, 2.12, -0.12],             // head
+      ...[-0.2, 0.2].flatMap(x => [[new THREE.BoxGeometry(0.24, 0.24, 0.7), legs, x, 0.95, 0.3], [new THREE.BoxGeometry(0.24, 0.62, 0.24), legs, x, 0.55, 0.62]]), // thighs, shins
+    ]));
+    g.add(frame(1.7, 2.6, 1.9)); return g;
+  }
+  const SHIRTS = [PAL.wall, 0x566c8d, PAL.roof, PAL.olive, 0x8e5b8f, 0x3f8f7a, 0xd98c3a, 0xe8e2d0];
   const flocks = CV.map(c => [c.pos[0] + 7, c.pos[1] + 6]); // a few sheep near every CV page
-  const spots = [[100, 30], [120, 36], [200, 30], [260, 40], [300, 26], [40, 40], [160, 20], [340, 44], [80, 44], [235, 44], [10, 28], [280, 36]];
-  let popCount = 0;
+  const spots = [[100, 30], [120, 36], [200, 30], [260, 40], [300, 26], [40, 40], [160, 20], [340, 44], [80, 44], [235, 44], [10, 28], [280, 36], [60, 24], [180, 38], [320, 34], [140, 28]];
+  const CHAIR_SPOTS = new Set([0, 6, 12]); // a wheelchair user in these groups (on gentle ground near the villages)
+  let popCount = 0, n = 0;
   [...spots.map(([deg, r]) => polar(deg, r)), ...flocks].forEach((home, i) => {
-    const isSheep = i >= spots.length || i % 3 !== 0;
-    const count = isSheep ? 3 : 1;
+    const isSheep = i >= spots.length || i % 4 === 1; // sheep near the CV pages and in a quarter of the spots, people everywhere else
+    const count = isSheep ? 3 : 2 + (i % 2);
     for (let k = 0; k < count; k++) {
-      const g = isSheep ? sheep() : person([PAL.wall, 0x566c8d, PAL.roof, PAL.olive][i % 4]);
+      const rolls = !isSheep && k === 0 && CHAIR_SPOTS.has(i);
+      n++;
+      const shirt = SHIRTS[(i * 3 + k) % SHIRTS.length], skin = SKINS[(i * 5 + k * 3) % SKINS.length], legs = TROUSERS[(i + k) % TROUSERS.length];
+      const g = isSheep ? sheep() : rolls ? wheelchair(shirt, skin, legs) : person(shirt, skin, SHAPES[(i + k * 2) % SHAPES.length], legs);
       const x = home[0] + (k - 1) * 3, z = home[1] + (k % 2) * 3;
       if (groundAt(x, z) < WATER_Y + 0.6) continue; // never start in the lake
-      if (MOBILE && ++popCount % 10 === 0) continue; // phones: one figure in ten fewer
+      if (MOBILE && !rolls && ++popCount % 10 === 0) continue; // phones: one figure in ten fewer (never a wheelchair)
       g.position.set(x, groundAt(x, z), z); scene.add(g);
-      walkers.push({ g, home, homeY: groundAt(...home), speed: isSheep ? 1.4 : 2.4, target: [x, z], wait: Math.random() * 2, knocked: 0, kind: isSheep ? 'sheep' : 'person' });
+      walkers.push({ g, home, homeY: groundAt(...home), speed: isSheep ? 1.4 : rolls ? 2.0 : 2.1 + (n % 5) * 0.15, target: [x, z], wait: Math.random() * 2, knocked: 0, kind: isSheep ? 'sheep' : 'person', rolls });
     }
   });
 }
@@ -632,7 +666,7 @@ function updateWalkers(dt, t) {
     }
     const step = Math.min(d, speed * dt), nx = p.x + dx / d * step, nz = p.z + dz / d * step;
     if (groundAt(nx, nz) < WATER_Y + 0.3) { w.target = [p.x, p.z]; continue; }
-    p.set(nx, groundAt(nx, nz) + Math.abs(Math.sin(t * speed * 4)) * 0.18, nz); w.g.rotation.y = Math.atan2(dx, dz);
+    p.set(nx, groundAt(nx, nz) + (w.rolls ? 0 : Math.abs(Math.sin(t * speed * 4)) * 0.18), nz); w.g.rotation.y = Math.atan2(dx, dz);
   }
 }
 
