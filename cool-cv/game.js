@@ -658,7 +658,7 @@ function updateWalkers(dt, t) {
       w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
     }
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
-    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; if (w.kind === 'sheep') play('sheep'); else personVoice(); comicHit(w, cp); slap(0.8); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; if (w.kind === 'sheep') bleat(); else personVoice(); comicHit(w, cp); slap(0.8); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
     if (w.scared > 0) { w.scared -= dt; speed *= 3; }
     else if (dc < 11) { // step aside when the crawler gets close
@@ -798,46 +798,46 @@ function updateExhaust(dt) {
     p.m.material.opacity = 0.7 * (1 - k) * (1 - k * 0.4);
   }
 }
-// little birds now and then: black, white, blue or red, crossing the screen slowly in bounding flight (a burst of wingbeats, rising; a glide with wings folded, dipping)
-const birdLayer = document.createElement('div'); birdLayer.className = 'hud'; birdLayer.style.inset = '0'; birdLayer.style.overflow = 'hidden';
-document.body.insertBefore(birdLayer, document.getElementById('minimap')); // under the HUD
-const BIRD_COLS = [['#1d1b1a', '#000'], ['#f4f1ea', '#8c8577'], ['#2f6fb5', '#1d4a7d'], ['#c8372d', '#7d1d17']];
-const birds = []; let nextFlock = 6 + Math.random() * 6;
-function birdSvg(col, edge) {
-  return `<svg viewBox="-16 -14 32 24" width="100%" height="100%" style="overflow:visible"><path class="w2" fill="${edge}"/><path d="M -9 1 L -14 -1 L -13 3 Z" fill="${col}" stroke="${edge}" stroke-width=".8"/>`
-    + `<ellipse cx="0" cy="1" rx="7.5" ry="3.6" fill="${col}" stroke="${edge}" stroke-width=".8"/><circle cx="7" cy="-1" r="3" fill="${col}" stroke="${edge}" stroke-width=".8"/>`
-    + `<path d="M 9.6 -1.6 L 13 -0.6 L 9.8 0.2 Z" fill="#e3b341"/><circle cx="7.9" cy="-1.8" r=".7" fill="#111"/><path class="w1" fill="${col}" stroke="${edge}" stroke-width=".8"/></svg>`;
+// little birds in the valley: black, white, blue or red, a few now and then passing over the crawler, and one now and then
+// flushed out of a tree you hit. Bounding flight: a burst of wingbeats (rising), a short glide with wings folded (dipping)
+const BIRD_COLS = [0x1d1b1a, 0xf4f1ea, 0x2f6fb5, 0xc8372d], birds = [];
+const birdGeo = { body: new THREE.SphereGeometry(0.5, 8, 6).scale(0.55, 0.5, 1), head: new THREE.SphereGeometry(0.3, 8, 6), beak: new THREE.ConeGeometry(0.1, 0.3, 5).rotateX(Math.PI / 2), tail: new THREE.BoxGeometry(0.35, 0.06, 0.45),
+  wing: new THREE.BoxGeometry(1.0, 0.05, 0.5).translate(0.5, 0, 0) }; // a wing hinged at the body
+const beakMat = toon({ color: 0xe3b341 }), birdMats = BIRD_COLS.map(c => toon({ color: c }));
+let nextFlock = 20 + Math.random() * 15;
+function makeBird(x, y, z, dx, dz, takeoff = false) {
+  const mat = birdMats[Math.random() * 4 | 0], g = new THREE.Group(), add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
+  add(birdGeo.body, mat, 0, 0, 0); add(birdGeo.head, mat, 0, 0.18, 0.5); add(birdGeo.beak, beakMat, 0, 0.16, 0.85); add(birdGeo.tail, mat, 0, 0.05, -0.65);
+  const wl = add(birdGeo.wing, mat, 0.22, 0.12, 0.05), wr = add(birdGeo.wing, mat, -0.22, 0.12, 0.05); wr.scale.x = -1;
+  const sc = 0.9 + Math.random() * 0.4; g.scale.setScalar(sc); g.position.set(x, y, z); scene.add(g);
+  const l = Math.hypot(dx, dz) || 1;
+  birds.push({ g, wl, wr, dx: dx / l, dz: dz / l, speed: 6 + Math.random() * 2.5, vy: takeoff ? 7 : 0, phase: 'flap', pt: takeoff ? 1.4 : 0.4 + Math.random() * 0.5, wing: Math.random() * 6, rate: 13 + Math.random() * 4,
+    alt: 9 + Math.random() * 6, life: 0, turn: (Math.random() - 0.5) * 0.25 });
 }
-function wingPath(f, far) { // f: 1 wings up, -1 down; the far wing a little smaller and behind
-  const k = far ? 0.75 : 1, ty = (-11 * f) * k, mx = far ? -1 : 0;
-  return `M ${mx - 3} 0 Q ${mx - 2} ${ty * 0.6} ${mx + 1 - 8 * k} ${ty} Q ${mx + 2} ${ty * 0.25 + 1} ${mx + 4} 0 Z`;
-}
-function spawnFlock() {
-  const n = 1 + (Math.random() < 0.5 ? 0 : Math.random() < 0.6 ? 1 : 2), dir = Math.random() < 0.5 ? 1 : -1, y0 = 8 + Math.random() * 55, speed = 5.5 + Math.random() * 3; // % of the width per second: slow
+function spawnFlock() { // from beyond the view, across the crawler, a little high
+  const cp = car.position, a = Math.random() * Math.PI * 2, n = Math.random() < 0.6 ? 1 : 2, dx = Math.cos(a), dz = Math.sin(a), off = (Math.random() - 0.5) * 16;
   for (let i = 0; i < n; i++) {
-    const [col, edge] = BIRD_COLS[Math.random() * 4 | 0], el = document.createElement('div'), size = 18 + Math.random() * 10;
-    el.style.cssText = `position:absolute;width:${size}px;height:${size * 0.75}px;left:0;top:0;will-change:transform`;
-    el.innerHTML = birdSvg(col, edge); birdLayer.appendChild(el);
-    birds.push({ el, w1: el.querySelector('.w1'), w2: el.querySelector('.w2'), dir, x: dir > 0 ? -6 - i * (4 + Math.random() * 4) : 106 + i * (4 + Math.random() * 4), y: y0 + (Math.random() - 0.5) * 8,
-      vx: speed * (0.9 + Math.random() * 0.2), vy: 0, phase: 'flap', pt: 0.4 + Math.random() * 0.5, wing: Math.random() * 6, rate: 11 + Math.random() * 4, bob: Math.random() * 6 });
+    const x = cp.x - dx * 55 - dz * off + (Math.random() - 0.5) * 4 - dx * i * 3, z = cp.z - dz * 55 + dx * off + (Math.random() - 0.5) * 4 - dz * i * 3;
+    makeBird(x, groundAt(x, z) + 10 + Math.random() * 4, z, dx, dz);
   }
+}
+function flushBird(t) { // out of a tree that has just been hit: straight up and away from the crawler
+  const cp = car.position; makeBird(t.x, t.y + ASSETS.tree.height * t.sc * 0.8, t.z, t.x - cp.x + (Math.random() - 0.5) * 2, t.z - cp.z + (Math.random() - 0.5) * 2, true);
 }
 function updateBirds(dt) {
   if (!started) return;
-  nextFlock -= dt; if (nextFlock <= 0) { spawnFlock(); nextFlock = 9 + Math.random() * 14; }
+  nextFlock -= dt; if (nextFlock <= 0) { spawnFlock(); nextFlock = 25 + Math.random() * 25; }
   for (let i = birds.length - 1; i >= 0; i--) {
-    const b = birds[i]; b.pt -= dt;
-    if (b.pt <= 0) { // switch between a burst of wingbeats and a short glide, never quite the same length
-      if (b.phase === 'flap') { b.phase = 'glide'; b.pt = 0.25 + Math.random() * 0.45; } else { b.phase = 'flap'; b.pt = 0.35 + Math.random() * 0.6; if (Math.random() < 0.25) b.vx *= 0.85 + Math.random() * 0.3; }
-    }
-    let f;
-    if (b.phase === 'flap') { b.wing += dt * b.rate; f = Math.sin(b.wing); b.vy += (-9 - b.vy) * Math.min(1, dt * 4); } // up
-    else { f = -0.15 + 0.1 * Math.sin(b.wing += dt * 2); b.vy += (11 - b.vy) * Math.min(1, dt * 3); } // folded, dipping
-    b.x += b.dir * b.vx * dt; b.y = Math.max(2, Math.min(80, b.y + b.vy * dt * 0.18)); b.bob += dt * 3;
-    b.w1.setAttribute('d', wingPath(f, false)); b.w2.setAttribute('d', wingPath(f * 0.9, true));
-    const tilt = b.vy * 0.6 * b.dir + Math.sin(b.bob) * 3;
-    b.el.style.transform = `translate(${b.x}vw, ${b.y}vh) translate(-50%, -50%) scaleX(${b.dir}) rotate(${tilt}deg)`;
-    if (b.x < -20 || b.x > 120) { b.el.remove(); birds.splice(i, 1); }
+    const b = birds[i], p = b.g.position; b.pt -= dt; b.life += dt;
+    if (b.pt <= 0) { if (b.phase === 'flap') { b.phase = 'glide'; b.pt = 0.25 + Math.random() * 0.45; } else { b.phase = 'flap'; b.pt = 0.35 + Math.random() * 0.6; b.turn = (Math.random() - 0.5) * 0.35; } }
+    const floor = groundAt(p.x, p.z) + b.alt; let f;
+    if (b.phase === 'flap') { b.wing += dt * b.rate; f = Math.sin(b.wing); b.vy += ((p.y < floor ? 3.5 : 1.2) - b.vy) * Math.min(1, dt * 3); } // up
+    else { f = 0.15; b.vy += (-2.6 - b.vy) * Math.min(1, dt * 3); } // wings folded, dipping
+    const c = Math.cos(b.turn * dt), sn = Math.sin(b.turn * dt), ndx = b.dx * c - b.dz * sn; b.dz = b.dx * sn + b.dz * c; b.dx = ndx; // a lazy curve
+    p.x += b.dx * b.speed * dt; p.z += b.dz * b.speed * dt; p.y += b.vy * dt;
+    b.g.rotation.set(-b.vy * 0.05, Math.atan2(b.dx, b.dz), -b.turn * 1.5, 'YXZ');
+    b.wl.rotation.z = f * 0.9; b.wr.rotation.z = -f * 0.9;
+    if (b.life > 30 || Math.hypot(p.x - car.position.x, p.z - car.position.z) > 90) { scene.remove(b.g); birds.splice(i, 1); }
   }
 }
 // a big, thin dust cloud where a house lands
@@ -869,7 +869,7 @@ function updateTrees(dt) {
     let th = t.th || 0, om = t.om || 0;
     if (d >= R) t.pressed = false; else t.rustled = false; // free again: the next contact knocks
     if (d < R) { // pressed: bend away from the crawler, mostly along its direction of travel
-      if (!t.pressed && sp > 2) { treeHit(sp / VMAX); leaves(sp / VMAX); } t.pressed = true;
+      if (!t.pressed && sp > 2) { treeHit(sp / VMAX); leaves(sp / VMAX); if (Math.random() < 0.3 && birds.length < 6) flushBird(t); } t.pressed = true;
       let bx = dx / (d || 1) * 0.6, bz = dz / (d || 1) * 0.6; if (sp > 1) { bx += v.x / sp; bz += v.z / sp; } const bl = Math.hypot(bx, bz) || 1;
       t.bx = bx / bl; t.bz = bz / bl;
       const k = 1 - d / R, target = TREE_MAX * Math.min(1, k * k * (3 - 2 * k) * 1.6), nth = th + (target - th) * Math.min(1, dt * 14);
@@ -959,6 +959,9 @@ function tone(f0, f1, dur, gain, type = 'sine', when = 0) {
 const chime = () => { tone(784, 784, 0.22, 0.16, 'triangle'); tone(1175, 1175, 0.45, 0.16, 'triangle', 0.14); }; // pum-pim
 const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 700, 0.07, 0.2);
 const ndc = new THREE.Vector3(), onCamera = p => { ndc.copy(p).project(camera); return Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1; };
+// loudness tiers (every file is normalised to about -16 LUFS, so these gains set the order):
+// 1 loud: hits, bleats, people, horn · 2 medium: knocks on houses that stay put, trees, water · 3 engine · 4 grass and snow · then the ambience
+const LV = { top: 0.75, mid: 0.34, engine: 0.15, low: 0.06, amb: 0.05 };
 // Web Audio sounds: the slap (a different pitch, speed, loudness and tone every time) and the engine loop, which follows the speed
 const BUFS = {}; const bufFetch = { slap: fetch('assets/sfx/slap.mp3').then(r => r.arrayBuffer()).catch(() => null), engine: fetch('assets/sfx/engine.wav').then(r => r.arrayBuffer()).catch(() => null), tree: fetch('assets/sfx/tree.mp3').then(r => r.arrayBuffer()).catch(() => null) };
 const LEAVES = 6; for (let i = 1; i <= LEAVES; i++) bufFetch['leaves' + i] = fetch(`assets/sfx/leaves${i}.mp3`).then(r => r.arrayBuffer()).catch(() => null); // single rustles cut from one recording
@@ -971,10 +974,21 @@ async function slap(strength = 1, heavy = false) { // thump! never quite the sam
   const src = ctx.createBufferSource(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
   src.buffer = buf; src.playbackRate.value = heavy ? 0.5 + Math.random() * 0.15 : 0.72 + Math.random() * 0.6; // lower and slower, or higher and snappier
   lp.type = 'lowpass'; lp.frequency.value = heavy ? 700 + Math.random() * 500 : 1600 + Math.random() * 7000; lp.Q.value = 0.5 + Math.random() * 2; // duller or brighter
-  g.gain.value = SFX_VOL * (heavy ? 0.9 : 0.6) * Math.min(1, strength) * (0.55 + Math.random() * 0.45);
+  g.gain.value = LV.top * Math.min(1, strength) * (0.65 + Math.random() * 0.35);
   src.connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.015);
 }
 let lastTreeHit = 0;
+// sheep: the bleat, never twice alike (pitch and speed, a formant-ish peak, distance)
+bufFetch.sheep = fetch('assets/sfx/sheep.mp3').then(r => r.arrayBuffer()).catch(() => null);
+async function bleat() {
+  const ctx = audioCtx(), buf = await buffer('sheep'); if (!ctx || !buf) return;
+  const src = ctx.createBufferSource(), pk = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+  src.buffer = buf; src.playbackRate.value = 0.78 + Math.random() * 0.55; // lamb or old ram
+  pk.type = 'peaking'; pk.frequency.value = 700 + Math.random() * 2200; pk.Q.value = 1 + Math.random() * 2; pk.gain.value = (Math.random() - 0.5) * 14;
+  lp.type = 'lowpass'; lp.frequency.value = 2800 + Math.random() * 6000;
+  g.gain.value = LV.top * (0.75 + Math.random() * 0.25);
+  src.connect(pk).connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.04);
+}
 // people knocked over: one of four fragments of the voice, varied in pitch, speed and tone
 const VOICES = 4; for (let i = 1; i <= VOICES; i++) bufFetch['person' + i] = fetch(`assets/sfx/person${i}.mp3`).then(r => r.arrayBuffer()).catch(() => null);
 let lastVoiceN = 0;
@@ -982,23 +996,24 @@ async function personVoice() {
   let n; do n = 1 + (Math.random() * VOICES | 0); while (n === lastVoiceN); lastVoiceN = n;
   const ctx = audioCtx(), buf = await buffer('person' + n); if (!ctx || !buf) return;
   const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-  src.buffer = buf; src.playbackRate.value = 0.82 + Math.random() * 0.45; // deeper and slower, or higher and quicker
-  f.type = 'peaking'; f.frequency.value = 600 + Math.random() * 2400; f.Q.value = 1 + Math.random() * 2; f.gain.value = (Math.random() - 0.5) * 12; // a different 'mouth' each time
-  g.gain.value = SFX_VOL * (0.7 + Math.random() * 0.3);
-  src.connect(f).connect(g).connect(ctx.destination); src.start();
+  src.buffer = buf; src.playbackRate.value = 0.75 + Math.random() * 0.6; // deeper and slower, or higher and quicker
+  f.type = 'peaking'; f.frequency.value = 500 + Math.random() * 2800; f.Q.value = 1 + Math.random() * 2.5; f.gain.value = (Math.random() - 0.5) * 16; // a different 'mouth' each time
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2500 + Math.random() * 7000; // and a different distance
+  g.gain.value = LV.top * (0.75 + Math.random() * 0.25);
+  src.connect(f).connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.03);
 }
 // the ground under the wheels: grains of water, grass or snow, more of them the faster you go, very low (a little under the engine)
 const SURF_SND = { water: 'surf_water', grass: 'surf_grass', earth: 'surf_grass', sand: 'surf_grass', snow: 'surf_snow' }; // rock: tyres only
-const SURF_GAIN = { surf_water: 1, surf_grass: 1.1, surf_snow: 1.5 }; // evens out the three recordings
+const SURF_GAIN = { surf_water: LV.mid * 0.8, surf_grass: LV.low * 1.1, surf_snow: LV.low * 1.5 }; // water in the middle tier, grass and snow at the bottom (and evened out)
 for (const f of new Set(Object.values(SURF_SND))) bufFetch[f] = fetch(`assets/sfx/${f}.mp3`).then(r => r.arrayBuffer()).catch(() => null);
-const SURF_VOL = 0.13; let grainAt = 0;
+let grainAt = 0;
 async function surfaceGrain(name, k) {
   const ctx = audioCtx(), buf = await buffer(name); if (!ctx || !buf) return;
   const len = 0.25 + Math.random() * 0.2, at = Math.random() * Math.max(0, buf.duration - len), t0 = ctx.currentTime, fade = 0.06;
   const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
   src.buffer = buf; src.playbackRate.value = 0.8 + Math.random() * 0.4; // random pitch
   f.type = 'bandpass'; f.frequency.value = 500 + Math.random() * 3000; f.Q.value = 0.4 + Math.random() * 0.8; // random colour
-  const v = SURF_VOL * SURF_GAIN[name] * (0.4 + 0.6 * k) * (0.7 + Math.random() * 0.3);
+  const v = SURF_GAIN[name] * (0.4 + 0.6 * k) * (0.7 + Math.random() * 0.3);
   g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(v, t0 + fade); g.gain.setValueAtTime(v, t0 + len - fade); g.gain.linearRampToValueAtTime(0, t0 + len);
   src.connect(f).connect(g).connect(ctx.destination); src.start(t0, at, len + 0.05);
 }
@@ -1017,7 +1032,7 @@ async function leaves(strength = 1) { // a rustle of the branches: one of the si
   const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
   src.buffer = buf; src.playbackRate.value = 0.85 + Math.random() * 0.35;
   f.type = 'highpass'; f.frequency.value = 150 + Math.random() * 500; // thinner or fuller
-  g.gain.value = SFX_VOL * 0.4 * Math.min(1, 0.4 + strength * 0.6) * (0.6 + Math.random() * 0.4);
+  g.gain.value = LV.mid * 0.8 * Math.min(1, 0.4 + strength * 0.6) * (0.6 + Math.random() * 0.4);
   src.connect(f).connect(g).connect(ctx.destination); src.start();
 }
 async function treeHit(strength = 1) { // the crawler meets a trunk: the recorded knock, varied each time
@@ -1026,14 +1041,14 @@ async function treeHit(strength = 1) { // the crawler meets a trunk: the recorde
   const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
   src.buffer = buf; src.playbackRate.value = 0.78 + Math.random() * 0.5;
   f.type = 'lowpass'; f.frequency.value = 2200 + Math.random() * 6000; f.Q.value = 0.4 + Math.random() * 1.5;
-  g.gain.value = SFX_VOL * 0.45 * Math.min(1, 0.5 + strength * 0.5) * (0.6 + Math.random() * 0.4);
+  g.gain.value = LV.mid * Math.min(1, 0.5 + strength * 0.5) * (0.6 + Math.random() * 0.4);
   src.connect(f).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.01);
 }
 let lastKnock = 0;
 function woodKnock(strength = 1) { // synthesised: a dull knock on a thick wooden plank, quiet. A low thump plus a few short wooden modes, muffled
   const now = performance.now(); if (now - lastKnock < 90) return; lastKnock = now;
   const ctx = audioCtx(); if (!ctx) return;
-  const t0 = ctx.currentTime, vol = SFX_VOL * 0.75 * Math.min(1, 0.4 + strength * 0.6), pitch = 0.85 + Math.random() * 0.3;
+  const t0 = ctx.currentTime, vol = LV.mid * 0.85 * Math.min(1, 0.4 + strength * 0.6), pitch = 0.85 + Math.random() * 0.3;
   const out = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900 + Math.random() * 400; lp.Q.value = 0.7;
   out.gain.value = vol; out.connect(lp).connect(ctx.destination);
   for (const [f, a, d] of [[95, 1, 0.16], [182, 0.55, 0.09], [311, 0.3, 0.06], [467, 0.15, 0.04]]) { // modes of a plank: frequency, level, decay
@@ -1048,7 +1063,7 @@ function woodKnock(strength = 1) { // synthesised: a dull knock on a thick woode
 }
 // nature ambience: a 75 s seamless loop (0.1 s of handles either side, so the loop points sit inside real audio), low under everything
 bufFetch.ambience = fetch('assets/sfx/ambience.mp3').then(r => r.arrayBuffer()).catch(() => null);
-const AMB_VOL = 0.22; let ambience = null;
+const AMB_VOL = LV.amb; let ambience = null;
 async function startAmbience() {
   const ctx = audioCtx(), buf = await buffer('ambience'); if (!ctx || !buf || ambience) return;
   const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = buf; src.loop = true; src.loopStart = 0.1; src.loopEnd = buf.duration - 0.1;
@@ -1056,7 +1071,7 @@ async function startAmbience() {
   src.connect(g).connect(ctx.destination); src.start(ctx.currentTime, 0.1); ambience = { src, g };
 }
 function ambienceOn(on) { if (ambience && actx) ambience.g.gain.setTargetAtTime(on ? AMB_VOL : 0, actx.currentTime, 0.3); }
-const ENGINE_VOL = 0.16; // low, under everything else
+const ENGINE_VOL = LV.engine;
 let engine = null;
 async function startEngine() {
   const ctx = audioCtx(), buf = await buffer('engine'); if (!ctx || !buf || engine) return;
@@ -1068,7 +1083,7 @@ function updateEngine(r, audible) { // r: speed / fast. Idle rumble at rest, rev
   engine.src.playbackRate.setTargetAtTime(0.7 + 0.75 * k, ctx.currentTime, 0.25);
   engine.g.gain.setTargetAtTime(audible ? ENGINE_VOL * (0.6 + 0.7 * k) : 0, ctx.currentTime, 0.15);
 }
-const SFX_VOL = 0.75; // the files are all normalised to the same loudness (-16 LUFS), so they all play at one volume
+const SFX_VOL = LV.top; // horn, bark, fanfare
 function play(name) { try { const a = SFX[name].cloneNode(); a.volume = SFX_VOL; a.play().catch(() => {}); } catch (e) {} }
 const shouts = []; // comic "!" lines
 const shoutMats = { car: new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }), dog: new THREE.MeshBasicMaterial({ color: 0xff8a1f, depthTest: false }) }; // white for the horn, orange for the dog
@@ -1455,4 +1470,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, get birds() { return birds.length; }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
