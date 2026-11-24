@@ -825,14 +825,15 @@ function updateTrees(dt) {
     if (!t.im) return; // not loaded yet
     const dx = t.x - cp.x, dz = t.z - cp.z, d = Math.hypot(dx, dz), R = 3.1 + 0.5 * t.sc;
     let th = t.th || 0, om = t.om || 0;
-    if (d >= R) t.pressed = false; // free again: the next contact knocks
+    if (d >= R) t.pressed = false; else t.rustled = false; // free again: the next contact knocks
     if (d < R) { // pressed: bend away from the crawler, mostly along its direction of travel
-      if (!t.pressed && sp > 2) treeHit(sp / VMAX); t.pressed = true;
+      if (!t.pressed && sp > 2) { treeHit(sp / VMAX); leaves(sp / VMAX); } t.pressed = true;
       let bx = dx / (d || 1) * 0.6, bz = dz / (d || 1) * 0.6; if (sp > 1) { bx += v.x / sp; bz += v.z / sp; } const bl = Math.hypot(bx, bz) || 1;
       t.bx = bx / bl; t.bz = bz / bl;
       const k = 1 - d / R, target = TREE_MAX * Math.min(1, k * k * (3 - 2 * k) * 1.6), nth = th + (target - th) * Math.min(1, dt * 14);
       om = (nth - th) / Math.max(dt, 1e-3); th = nth;
     } else if (Math.abs(th) > 0.002 || Math.abs(om) > 0.01) { // released: a damped spring back to upright
+      if (t.th > 0.8 && !t.rustled) { leaves(0.6); t.rustled = true; } // the branches swish as it springs up
       om += (-TREE_K * th - TREE_C * om) * dt; th += om * dt;
     } else { if (t.th) { t.th = 0; t.om = 0; placeInstance(t, t.x, t.y, t.z, treeQ.identity()); } continue; }
     t.th = th; t.om = om;
@@ -851,19 +852,21 @@ chassisBody.addEventListener('collide', e => {
   slap(1, true); // SUPER FAST: the house goes flying with a heavy slap
   h.flying = true; houseHitQueue.push({ h, v: chassisBody.velocity.clone() });
 });
-function landingSpot(h, dirx, dirz) { // a free spot ahead, on dry ground, away from the other houses
-  for (const D of [14, 12, 16, 10, 18, 8]) for (const turn of [0, 0.35, -0.35, 0.7, -0.7]) {
-    const c = Math.cos(turn), sn = Math.sin(turn), ux = dirx * c - dirz * sn, uz = dirx * sn + dirz * c, x = h.x + ux * D, z = h.z + uz * D, y = groundAt(x, z);
-    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 8 || y < WATER_Y + 0.4) continue;
-    if (SCENERY.houses.some(o => o !== h && Math.hypot(x - o.x, z - o.z) < 1.6 * (o.sc + h.sc) + 1)) continue;
-    return [x, y, z, ux, uz];
+function landingSpot(h, dirx, dirz) { // a free spot on dry ground, away from the other houses: ahead if possible, then anywhere around, else the same spot
+  const ok = (x, z) => { const y = groundAt(x, z);
+    return inside(x, z) && Math.hypot(x, z) <= rimAt(x, z) - 8 && y >= WATER_Y + 0.4 && !SCENERY.houses.some(o => o !== h && Math.hypot(x - o.x, z - o.z) < 1.6 * (o.sc + h.sc) + 1) ? y : null; };
+  const tries = [];
+  for (const D of [14, 12, 16, 10, 18, 8]) for (const turn of [0, 0.35, -0.35, 0.7, -0.7]) tries.push([D, turn]);
+  for (const D of [12, 9, 15, 6]) for (let k = 1; k < 12; k++) tries.push([D, k / 12 * Math.PI * 2]); // anywhere around
+  for (const [D, turn] of tries) {
+    const c = Math.cos(turn), sn = Math.sin(turn), ux = dirx * c - dirz * sn, uz = dirx * sn + dirz * c, x = h.x + ux * D, z = h.z + uz * D, y = ok(x, z);
+    if (y !== null) return [x, y, z, ux, uz];
   }
-  return null;
+  return [h.x, h.y, h.z, dirx, dirz]; // nowhere to go: it jumps, rolls over and lands where it was
 }
 function launchHouses(t) { // after the physics step: take the house out of the world and send it flying
   for (const { h, v } of houseHitQueue) {
     const s = Math.hypot(v.x, v.z) || 1, spot = landingSpot(h, v.x / s, v.z / s);
-    if (!spot) { h.flying = false; continue; }
     world.removeBody(h.body); h.im.frustumCulled = false;
     const [x1, y1, z1, ux, uz] = spot;
     flying.push({ h, t0: t, x0: h.x, y0: h.y, z0: h.z, x1, y1, z1, ax: uz, az: -ux, spin: (Math.random() < 0.5 ? -1 : 1) * Math.PI * (0.5 + Math.random()) });
@@ -889,7 +892,7 @@ function updateHouses(t) {
       const kk = (el - ANTIC - HOUSE_FLIGHT) / 0.7;
       if (!f.landed) {
         f.landed = true; h.x = f.x1; h.y = f.y1; h.z = f.z1; h.rot += f.spin;
-        h.body.position.set(h.x, h.y + h.hy, h.z); h.body.quaternion.setFromEuler(0, h.rot, 0); world.addBody(h.body);
+        h.body.position.set(h.x, h.y + h.hy, h.z); h.body.quaternion.setFromEuler(0, h.rot, 0); h.body.aabbNeedsUpdate = true; h.body.updateBoundingRadius(); world.addBody(h.body); // a static body keeps its old box unless told
         dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35); lastSlap = 0; slap(0.85, true); // lands with a heavy slap
       }
       const sy = kk >= 1 ? 1 : 1 - Math.exp(-4.5 * kk) * Math.cos(13 * kk) * 0.45; // from 0.55 (flat) through a stretch back to 1
@@ -916,6 +919,7 @@ const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 7
 const ndc = new THREE.Vector3(), onCamera = p => { ndc.copy(p).project(camera); return Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1; };
 // Web Audio sounds: the slap (a different pitch, speed, loudness and tone every time) and the engine loop, which follows the speed
 const BUFS = {}; const bufFetch = { slap: fetch('assets/sfx/slap.mp3').then(r => r.arrayBuffer()).catch(() => null), engine: fetch('assets/sfx/engine.wav').then(r => r.arrayBuffer()).catch(() => null), tree: fetch('assets/sfx/tree.mp3').then(r => r.arrayBuffer()).catch(() => null) };
+const LEAVES = 6; for (let i = 1; i <= LEAVES; i++) bufFetch['leaves' + i] = fetch(`assets/sfx/leaves${i}.mp3`).then(r => r.arrayBuffer()).catch(() => null); // single rustles cut from one recording
 function audioCtx() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; } catch (e) { return null; } }
 async function buffer(name) { if (BUFS[name] !== undefined) return BUFS[name]; const ab = await bufFetch[name], ctx = audioCtx(); BUFS[name] = ab && ctx ? await ctx.decodeAudioData(ab.slice(0)).catch(() => null) : null; return BUFS[name]; }
 let lastSlap = 0;
@@ -929,20 +933,31 @@ async function slap(strength = 1, heavy = false) { // thump! never quite the sam
   src.connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.015);
 }
 let lastTreeHit = 0;
+let lastLeaves = 0, lastLeavesN = 0;
+async function leaves(strength = 1) { // a rustle of the branches: one of the six cuts, never the same one twice in a row, varied
+  const now = performance.now(); if (now - lastLeaves < 140) return; lastLeaves = now;
+  let n; do n = 1 + (Math.random() * LEAVES | 0); while (n === lastLeavesN && LEAVES > 1); lastLeavesN = n;
+  const ctx = audioCtx(), buf = await buffer('leaves' + n); if (!ctx || !buf) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  src.buffer = buf; src.playbackRate.value = 0.85 + Math.random() * 0.35;
+  f.type = 'highpass'; f.frequency.value = 150 + Math.random() * 500; // thinner or fuller
+  g.gain.value = SFX_VOL * 0.4 * Math.min(1, 0.4 + strength * 0.6) * (0.6 + Math.random() * 0.4);
+  src.connect(f).connect(g).connect(ctx.destination); src.start();
+}
 async function treeHit(strength = 1) { // the crawler meets a trunk: the recorded knock, varied each time
   const now = performance.now(); if (now - lastTreeHit < 90) return; lastTreeHit = now;
   const ctx = audioCtx(), buf = await buffer('tree'); if (!ctx || !buf) return;
   const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
   src.buffer = buf; src.playbackRate.value = 0.78 + Math.random() * 0.5;
   f.type = 'lowpass'; f.frequency.value = 2200 + Math.random() * 6000; f.Q.value = 0.4 + Math.random() * 1.5;
-  g.gain.value = SFX_VOL * 0.75 * Math.min(1, 0.5 + strength * 0.5) * (0.6 + Math.random() * 0.4);
+  g.gain.value = SFX_VOL * 0.45 * Math.min(1, 0.5 + strength * 0.5) * (0.6 + Math.random() * 0.4);
   src.connect(f).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.01);
 }
 let lastKnock = 0;
 function woodKnock(strength = 1) { // synthesised: a dull knock on a thick wooden plank, quiet. A low thump plus a few short wooden modes, muffled
   const now = performance.now(); if (now - lastKnock < 90) return; lastKnock = now;
   const ctx = audioCtx(); if (!ctx) return;
-  const t0 = ctx.currentTime, vol = SFX_VOL * 0.35 * Math.min(1, 0.4 + strength * 0.6), pitch = 0.85 + Math.random() * 0.3;
+  const t0 = ctx.currentTime, vol = SFX_VOL * 0.75 * Math.min(1, 0.4 + strength * 0.6), pitch = 0.85 + Math.random() * 0.3;
   const out = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900 + Math.random() * 400; lp.Q.value = 0.7;
   out.gain.value = vol; out.connect(lp).connect(ctx.destination);
   for (const [f, a, d] of [[95, 1, 0.16], [182, 0.55, 0.09], [311, 0.3, 0.06], [467, 0.15, 0.04]]) { // modes of a plank: frequency, level, decay
