@@ -13,7 +13,7 @@
   html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
   .hud { position: absolute; pointer-events: none; }
   .chip { background: var(--bg); border: 2px solid var(--border); border-radius: 6px; color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  /* CV fragments: the speedometer's look. A dark badge, a ring that thickens towards the bottom left (6 → 6·φ²), the document at the centre of the inner circle */
+  /* CV pages: the speedometer's look. A dark badge, a ring that thickens towards the bottom left (6 → 6·φ²), the document at the centre of the inner circle */
   #frags { left: 10px; bottom: 8px; width: 92px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
   #frags svg { width: 92px; height: 92px; display: block; overflow: visible; }
   #frags .disc { fill: #3a2a24; stroke: #6b5444; stroke-width: 2.5; }
@@ -44,8 +44,9 @@
   #toast { left: 50%; top: 18%; transform: translateX(-50%); font-size: 13px; font-weight: 700; padding: 7px 12px; opacity: 0; transition: opacity .3s; white-space: nowrap; }
   #finale, #start { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.3); }
   .panel { width: min(540px, 88vw); max-height: 82vh; overflow: auto; background: var(--bg); border: 2px solid var(--border); border-radius: 6px; padding: 16px 18px; font-size: 12.5px; line-height: 1.55; color: var(--fg); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
-  .panel h2 { margin: 0 0 4px; font-size: 16px; color: var(--fg); }
-  .panel h2 i { font-size: 19px; font-weight: 400; } .panel h2 b { font-weight: 800; } .panel h2 .sub { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+  .panel h2 { margin: 0 0 4px; font-size: 26px; line-height: 1.15; color: var(--accent); } /* start and end: bigger titles, in the accent colour */
+  .panel .find { margin: 6px 0 10px; font-size: 21px; font-weight: 800; color: var(--fg); letter-spacing: -.2px; }
+  .panel h2 i { font-size: 31px; font-weight: 400; } .panel h2 b { font-weight: 800; } .panel h2 .sub { font-size: 15px; font-weight: 400; color: var(--muted); margin-left: 4px; }
   .panel ul { margin: 6px 0; padding-left: 18px; }
   .panel li { margin: 3px 0; }
   .panel .btns { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -122,9 +123,9 @@
 <div id="toast" class="hud chip"></div>
 <div id="newAdd" class="hud"><b>New addition!</b><span id="newName"></span></div>
 <div id="ach" class="hud"><div class="badge"><svg viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round"><path d="M 30 18 H 60 L 72 30 V 82 H 30 Z"/><path d="M 40 46 H 62 M 40 58 H 62 M 40 70 H 54" stroke-linecap="round"/></svg></div><div class="txt"><small id="achTop"></small><span id="achMsg"></span></div></div>
-<!-- CV fragments: a document with four quarter circles around it, one per fragment -->
+<!-- CV pages: a document with four quarter circles around it, one per page -->
 <div id="frags" class="hud">
-  <svg viewBox="0 0 100 100" aria-label="CV fragments found">
+  <svg viewBox="0 0 100 100" aria-label="CV pages found">
     <circle class="disc" cx="50" cy="50" r="48.5"/>
     <path id="arc0" class="q" d="M 56.24 6.44 A 44 44 0 0 1 93.56 43.76 L 86.5 44.26 A 33.15 33.15 0 0 0 55.74 13.5 Z"/>
     <path id="arc1" class="q" d="M 94 49.4 A 44 44 0 0 1 56.71 93.48 L 55.74 79.63 A 33.15 33.15 0 0 0 86.5 48.88 Z"/>
@@ -148,20 +149,21 @@
 <div id="start">
   <div class="panel">
     <h2><i><b>Job</b>ride</i> <span class="sub">A trip to Hire Ground</span></h2>
-    <p class="muted"><b>Four fragments</b> of my CV are hidden around the valley. Each one adds a piece to your <b>HUD</b>; the last one is waiting on the <b>highest summit</b>.</p>
+    <p class="find">Find my CV pages!</p>
+    <p class="muted"><b>Four pages</b> of my CV are hidden around the valley. Each one adds a piece to your <b>HUD</b>; the last one is waiting on the <b>highest summit</b>.</p>
     <table>
       <tr><td class="keys">Click / hold</td><td>drive towards the mouse (click the crawler: horn)</td></tr>
       <tr><td class="keys"><kbd>↑</kbd> <kbd>↓</kbd></td><td>gas, reverse</td></tr>
       <tr><td class="keys"><kbd>←</kbd> <kbd>→</kbd></td><td>steer</td></tr>
       <tr><td class="keys"><kbd>C</kbd></td><td>toggle simplified controls (the arrows point the crawler)</td></tr>
       <tr><td class="keys"><kbd>H</kbd> or <kbd>Space</kbd></td><td>horn: people and sheep run off</td></tr>
-      <tr><td class="keys"><kbd>Enter</kbd> or <kbd>Space</kbd></td><td>close a fragment</td></tr>
+      <tr><td class="keys"><kbd>Enter</kbd> or <kbd>Space</kbd></td><td>close a page</td></tr>
     </table>
     <p class="muted">Mind the <b>people</b> and the <b>animals</b>. Someone out there wants a <b>ride</b> 😉</p>
     <div class="btns"><button class="primary" id="startBtn">Start (any key)</button></div>
   </div>
 </div>
 
-<script type="module" src="./game.js?v=52"></script>
+<script type="module" src="./game.js?v=53"></script>
 </body>
 </html>

@@ -244,7 +244,7 @@
       </div>
     </header>
 
-    <!-- Jobride: the game takes the place of the CV sections; each fragment found adds its sections back below -->
+    <!-- Jobride: the game takes the place of the CV sections; each page found adds its sections back below -->
     <section id="cool-cv-panel" class="mb-8 hidden" aria-label="Jobride, A trip to Hire Ground: a game">
       <div class="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-github-border-default dark:border-github-border-dark">
         <h2 class="text-2xl font-bold"><i><b>Job</b><span class="font-normal">ride</span></i> <span class="ml-1 align-middle text-sm font-mono font-normal text-github-fg-muted dark:text-github-fg-dark-muted">A trip to Hire Ground</span></h2>
@@ -776,7 +776,7 @@
       function openGame() {
         sections().forEach(s => { s.classList.add('hidden'); s.style.opacity = ''; });
         panel.classList.remove('hidden');
-        frame.src = 'cool-cv/index.html?v=52&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        frame.src = 'cool-cv/index.html?v=53&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => frame.focus(), 400);
       }

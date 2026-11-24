@@ -69,10 +69,18 @@ function height(wx, wz) {
 
 // ---------------------------------------------------------------- CV content
 const PAGE_BLUE = 0x2f6fb5; // the CV pages, their beams, markers and sparkles
+const PAGE_SPOTS = (() => { // three pages somewhere new every game: on the valley floor, dry, away from the lake, the start, the summit and each other
+  const out = [], fallback = [polar(90, 52), polar(210, 52), polar(330, 52)];
+  const ok = (x, z) => { const h = height(x, z), sl = Math.hypot(height(x + 1, z) - height(x - 1, z), height(x, z + 1) - height(x, z - 1)) / 2;
+    return inside(x, z) && Math.hypot(x, z) < rimAt(x, z) * 0.62 && h > WATER_Y + 0.8 && h < 6 && sl < 0.7 && Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.r * 1.6
+      && Math.hypot(x - 0, z - 8) > 28 && Math.hypot(x - SUMMIT[0], z - SUMMIT[1]) > 30 && out.every(([px, pz]) => Math.hypot(x - px, z - pz) > 45); };
+  for (let k = 0; k < 3; k++) { let found = null; for (let t = 0; t < 3000 && !found; t++) { const [x, z] = polar(Math.random() * 360, R_EDGE * Math.random() * 0.6); if (ok(x, z)) found = [x, z]; } out.push(found || fallback[k]); }
+  return out;
+})();
 const CV = [ // the four CV pages hidden in the valley; their content is the CV page itself, revealed as you find them
-  { id: 'edu', pos: polar(90, 52), color: PAGE_BLUE },
-  { id: 'proj', pos: polar(210, 52), color: PAGE_BLUE },
-  { id: 'pub', pos: polar(330, 52), color: PAGE_BLUE },
+  { id: 'edu', pos: PAGE_SPOTS[0], color: PAGE_BLUE },
+  { id: 'proj', pos: PAGE_SPOTS[1], color: PAGE_BLUE },
+  { id: 'pub', pos: PAGE_SPOTS[2], color: PAGE_BLUE },
   { id: 'exp', pos: SUMMIT, color: PAGE_BLUE }, // the last one, on the highest summit of the ring
 ];
 const CARPET_ROUTE = [];
@@ -341,7 +349,7 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
   const CELL = 1.5, HALFG = 122, NG = Math.ceil(2 * HALFG / CELL), CLEAR = 2.6;
   const blocked = new Uint8Array(NG * NG), cellXZ = i => [-HALFG + (i % NG + 0.5) * CELL, -HALFG + (Math.floor(i / NG) + 0.5) * CELL];
   for (let i = 0; i < NG * NG; i++) { const [x, z] = cellXZ(i);
-    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.25) { blocked[i] = 1; continue; } // off the board, near the rim or over the lake
+    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.25 || groundAt(x, z) < WATER_Y + 0.6) { blocked[i] = 1; continue; } // off the board, near the rim, over the lake or any water
     for (const hs of SCENERY.houses) if (Math.hypot(x - hs.x, z - hs.z) < CLEAR + hs.sc * 1.3) { blocked[i] = 1; break; } }
   const idx = (x, z) => Math.max(0, Math.min(NG - 1, Math.floor((x + HALFG) / CELL))) + Math.max(0, Math.min(NG - 1, Math.floor((z + HALFG) / CELL))) * NG;
   function astar(from, to) {
@@ -376,7 +384,7 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
       for (let d = STEP - carry; d < L; d += STEP) even.push([a[0] + (c[0] - a[0]) * d / L, a[1] + (c[1] - a[1]) * d / L]);
       carry = (carry + L) % STEP; }
     even.push([...dense[dense.length - 1]]); dense = even;
-    const near = (x, z) => Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.2 || SCENERY.houses.some(hs => Math.hypot(x - hs.x, z - hs.z) < 2.4 + hs.sc * 1.3) || (Math.hypot(x, z) > rimAt(x, z) - 10 && Math.hypot(x - exp.pos[0], z - exp.pos[1]) > 12); // as close to the houses as the planner, the summit itself is outside the rim
+    const near = (x, z) => Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.2 || groundAt(x, z) < WATER_Y + 0.6 || SCENERY.houses.some(hs => Math.hypot(x - hs.x, z - hs.z) < 2.4 + hs.sc * 1.3) || (Math.hypot(x, z) > rimAt(x, z) - 10 && Math.hypot(x - exp.pos[0], z - exp.pos[1]) > 12); // as close to the houses as the planner, the summit itself is outside the rim
     for (let k = 0; k < 120; k++) for (let i = 1; i < dense.length - 1; i++) { // fewer passes: keep the slalom, round off the corners
       const a = dense[i - 1], c = dense[i + 1], q = dense[i], nx = (a[0] + q[0] + c[0]) / 3, nz = (a[1] + q[1] + c[1]) / 3;
       if (!near(nx, nz)) { q[0] = nx; q[1] = nz; } }
@@ -1222,13 +1230,20 @@ const mmBase = (() => { // pre-render the minimap terrain
   }
   g.putImageData(img, 0, 0); return { c, x0, x1, z0, z1 };
 })();
+function penCross(x, y, seed) { // a cross drawn with a blue pen: two slightly bent, uneven strokes, a dark edge so it reads on any ground
+  const r = k => { const v = Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v) - 0.5; }, S = 7.5;
+  const strokes = [[-S, -S, S, S], [S, -S, -S, S]].map(([ax, ay, bx, by], i) => [x + ax + r(i * 7) * 2, y + ay + r(i * 7 + 1) * 2, x + bx + r(i * 7 + 2) * 2, y + by + r(i * 7 + 3) * 2, x + r(i * 7 + 4) * 4, y + r(i * 7 + 5) * 4]);
+  mm.lineCap = 'round'; mm.lineJoin = 'round';
+  for (const [w, col] of [[5.5, '#14365e'], [3.2, '#3d86d8']]) { mm.lineWidth = w; mm.strokeStyle = col;
+    for (const [ax, ay, bx, by, cx, cy] of strokes) { mm.beginPath(); mm.moveTo(ax, ay); mm.quadraticCurveTo(cx, cy, bx, by); mm.stroke(); } }
+}
 function drawMinimap(heading) {
   const { c, x0, x1, z0, z1 } = mmBase; mm.clearRect(0, 0, 150, 190); mm.drawImage(c, 0, 0);
   const toM = (x, z) => [(x - x0) / (x1 - x0) * 149, (z - z0) / (z1 - z0) * 189];
-  for (const p of pickups) { if (p.got || !p.group.visible) continue; const [mx, my] = toM(...p.pos); mm.fillStyle = '#' + p.color.toString(16).padStart(6, '0'); mm.fillRect(mx - 3, my - 3, 6, 6); }
-  if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.fillStyle = '#ff8a1f'; mm.strokeStyle = '#ffffff'; mm.lineWidth = 2; mm.beginPath(); mm.arc(dx, dy, 4.5, 0, Math.PI * 2); mm.fill(); mm.stroke(); } // the dog: an orange dot, like its ring
+  for (const p of pickups) { if (p.got || !p.group.visible) continue; const [mx, my] = toM(...p.pos); penCross(mx, my, p.seed ||= Math.random() * 1000); }
+  if (dogState === 'waiting') { const [dx, dy] = toM(dog.position.x, dog.position.z); mm.fillStyle = '#ff8a1f'; mm.strokeStyle = '#ffffff'; mm.lineWidth = 2; mm.lineJoin = 'round'; mm.beginPath(); for (let k = 0; k < 10; k++) { const r = k % 2 ? 3.4 : 8, a = -Math.PI / 2 + k * Math.PI / 5; mm.lineTo(dx + Math.cos(a) * r, dy + Math.sin(a) * r); } mm.closePath(); mm.stroke(); mm.fill(); } // the dog: an orange dot, like its ring
   const [cx, cy] = toM(chassisBody.position.x, chassisBody.position.z);
-  mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#e7c76f'; mm.strokeStyle = '#3a2a24'; mm.lineWidth = 1.5; mm.beginPath(); mm.moveTo(0, -7); mm.lineTo(5, 5); mm.lineTo(-5, 5); mm.closePath(); mm.fill(); mm.stroke(); mm.restore(); // the crawler, mustard like the car
+  mm.save(); mm.translate(cx, cy); mm.rotate(heading); /* heading is clockwise from north, like canvas rotation */ mm.fillStyle = '#e7c76f'; mm.strokeStyle = '#3a2a24'; mm.lineWidth = 2.2; mm.lineJoin = 'round'; mm.beginPath(); mm.moveTo(0, -11); mm.lineTo(8, 8); mm.lineTo(0, 4); mm.lineTo(-8, 8); mm.closePath(); mm.fill(); mm.stroke(); mm.restore(); // the crawler: a bigger navigation arrow, mustard like the car
 }
 
 const SECTION_NAMES = { edu: 'Education and Languages', proj: 'Projects and Skills', pub: 'Publications', exp: 'Work Experience and Interests' };
@@ -1237,7 +1252,7 @@ function collect(p) {
   p.got = true; p.group.visible = false; updateFrags();
   burst(p.group.position.x, p.group.position.y, p.group.position.z); chime();
   const last = p.id === 'exp', n = last ? 4 : pickups.slice(0, 3).filter(q => q.got).length; // 1st, 2nd or 3rd page, whatever the order
-  achievement(`Fragment ${n} / 4 · ${last ? 'HUD complete' : UNLOCKS[n - 1] + ' unlocked'}`, `${SECTION_NAMES[p.id]} added to the CV${EMBEDDED ? '. Scroll down to read them' : ''}`);
+  achievement(`Page ${n} / 4 · ${last ? 'HUD complete' : UNLOCKS[n - 1] + ' unlocked'}`, `${SECTION_NAMES[p.id]} added to the CV${EMBEDDED ? '. Scroll down to read them' : ''}`);
   if (EMBEDDED) window.parent.postMessage({ type: 'coolcv:reveal', id: p.id, last }, location.origin); // the page shows those sections
   if (last) { // confetti, a trophy rising from the summit, then the closing message
     carpetOn = false; chevrons.count = 0; confetti(); raiseTrophy(p.group.position);
@@ -1464,7 +1479,7 @@ let frameNo = 0;
 
 $('loading').style.display = 'none';
 const startEl = $('start'); startEl.style.display = 'flex';
-const begin = () => { if (started) return; started = true; startEngine(); startAmbience(); startEl.style.display = 'none'; canvas.focus(); toast('Follow the blue beams to the fragments'); };
+const begin = () => { if (started) return; started = true; startEngine(); startAmbience(); startEl.style.display = 'none'; canvas.focus(); toast('Follow the blue beams to the pages'); };
 startEl.addEventListener('click', begin); $('startBtn').addEventListener('click', begin);
 window.addEventListener('keydown', begin, { once: true });
 frame();
