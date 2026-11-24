@@ -658,7 +658,7 @@ function updateWalkers(dt, t) {
       w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
     }
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
-    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person'); comicHit(w, cp); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person'); comicHit(w, cp); slap(0.8); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
     if (w.scared > 0) { w.scared -= dt; speed *= 3; }
     else if (dc < 11) { // step aside when the crawler gets close
@@ -772,6 +772,32 @@ function updateNeedles(dt, t) {
   }
   if (alive || needlesWasAlive) needleMesh.instanceMatrix.needsUpdate = true; needlesWasAlive = alive;
 }
+// exhaust: small black puffs from the pipe at the rear right, two a second; they grow from 1/4 to 2/3 of a wheel and thin out over ~3.5 s
+const PUFF_LIFE = 3.5, PUFF_RATE = 2, PUFF_N = 10, WHEEL_D = 2 * WHEEL_R;
+const EXHAUST = new CANNON.Vec3(-AX * 0.72, -1.3 * SIZE_K + WHEEL_R * 0.35, -AZ - WHEEL_R * 1.3), exW = new CANNON.Vec3();
+const puffGeo = new THREE.IcosahedronGeometry(0.5, 0), puffs = [];
+for (let i = 0; i < PUFF_N; i++) { const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color: 0x1a1817, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.renderOrder = 4; scene.add(m); puffs.push({ m, life: 0 }); }
+let puffNext = 0, puffAcc = 0;
+function updateExhaust(dt) {
+  if (!started) return;
+  puffAcc += dt * PUFF_RATE;
+  while (puffAcc >= 1) { // a new puff, each a little different in shape, angle and size
+    puffAcc -= 1; const p = puffs[puffNext]; puffNext = (puffNext + 1) % PUFF_N;
+    chassisBody.pointToWorldFrame(EXHAUST, exW); const back = chassisBody.quaternion.vmult(new CANNON.Vec3(0, 0, -1));
+    p.life = PUFF_LIFE * (0.9 + Math.random() * 0.2); p.max = p.life; p.m.visible = true;
+    p.m.position.set(exW.x, exW.y, exW.z); p.vx = back.x * 1.2 + (Math.random() - 0.5) * 0.4; p.vz = back.z * 1.2 + (Math.random() - 0.5) * 0.4; p.vy = 0.35 + Math.random() * 0.25;
+    p.m.rotation.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3); p.spin = (Math.random() - 0.5) * 0.8;
+    p.shape = [0.8 + Math.random() * 0.45, 0.75 + Math.random() * 0.4, 0.8 + Math.random() * 0.45]; p.s0 = (0.85 + Math.random() * 0.3) * WHEEL_D / 4;
+  }
+  for (const p of puffs) {
+    if (p.life <= 0) { if (p.m.visible) p.m.visible = false; continue; }
+    p.life -= dt; const k = 1 - p.life / p.max, e = 1 - Math.pow(1 - k, 2); // grows fast, then slowly
+    p.vx *= 1 - Math.min(1, dt * 1.2); p.vz *= 1 - Math.min(1, dt * 1.2);
+    p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.rotation.y += p.spin * dt;
+    const s = p.s0 + (WHEEL_D * 2 / 3 - p.s0) * e; p.m.scale.set(s * p.shape[0], s * p.shape[1], s * p.shape[2]);
+    p.m.material.opacity = 0.55 * (1 - k) * (1 - k * 0.4);
+  }
+}
 // a big, thin dust cloud where a house lands
 const clouds = [], cloudGeo = new THREE.IcosahedronGeometry(1, 1);
 function dustCloud(x, y, z, size) {
@@ -818,7 +844,8 @@ for (const h of SCENERY.houses) houseByBody.set(h.body, h);
 let houseHitQueue = [];
 chassisBody.addEventListener('collide', e => {
   const h = houseByBody.get(e.body); if (!h || h.flying) return;
-  if (chassisBody.velocity.length() / VMAX < 1.35) return; // only at SUPER FAST
+  const r = chassisBody.velocity.length() / VMAX; if (r > 0.25) slap(r); // a bump into a house
+  if (r < 1.35) return; // flying only at SUPER FAST
   h.flying = true; houseHitQueue.push({ h, v: chassisBody.velocity.clone() });
 });
 function landingSpot(h, dirx, dirz) { // a free spot ahead, on dry ground, away from the other houses
@@ -860,7 +887,7 @@ function updateHouses(t) {
       if (!f.landed) {
         f.landed = true; h.x = f.x1; h.y = f.y1; h.z = f.z1; h.rot += f.spin;
         h.body.position.set(h.x, h.y + h.hy, h.z); h.body.quaternion.setFromEuler(0, h.rot, 0); world.addBody(h.body);
-        dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35);
+        dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35); slap(1);
       }
       const sy = kk >= 1 ? 1 : 1 - Math.exp(-4.5 * kk) * Math.cos(13 * kk) * 0.45; // from 0.55 (flat) through a stretch back to 1
       placeInstance(h, h.x, h.y, h.z, houseQ.identity(), 0, sy);
@@ -884,6 +911,32 @@ function tone(f0, f1, dur, gain, type = 'sine', when = 0) {
 const chime = () => { tone(784, 784, 0.22, 0.16, 'triangle'); tone(1175, 1175, 0.45, 0.16, 'triangle', 0.14); }; // pum-pim
 const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 700, 0.07, 0.2);
 const ndc = new THREE.Vector3(), onCamera = p => { ndc.copy(p).project(camera); return Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1; };
+// Web Audio sounds: the slap (a different pitch, speed, loudness and tone every time) and the engine loop, which follows the speed
+const BUFS = {}; const bufFetch = { slap: fetch('assets/sfx/slap.mp3').then(r => r.arrayBuffer()).catch(() => null), engine: fetch('assets/sfx/engine.wav').then(r => r.arrayBuffer()).catch(() => null) };
+function audioCtx() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; } catch (e) { return null; } }
+async function buffer(name) { if (BUFS[name] !== undefined) return BUFS[name]; const ab = await bufFetch[name], ctx = audioCtx(); BUFS[name] = ab && ctx ? await ctx.decodeAudioData(ab.slice(0)).catch(() => null) : null; return BUFS[name]; }
+let lastSlap = 0;
+async function slap(strength = 1) { // thump! never quite the same twice
+  const now = performance.now(); if (now - lastSlap < 70) return; lastSlap = now;
+  const ctx = audioCtx(), buf = await buffer('slap'); if (!ctx || !buf) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+  src.buffer = buf; src.playbackRate.value = 0.72 + Math.random() * 0.6; // lower and slower, or higher and snappier
+  lp.type = 'lowpass'; lp.frequency.value = 1600 + Math.random() * 7000; lp.Q.value = 0.5 + Math.random() * 2; // duller or brighter
+  g.gain.value = SFX_VOL * Math.min(1, strength) * (0.55 + Math.random() * 0.45);
+  src.connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.015);
+}
+const ENGINE_VOL = 0.06; // very low under everything else
+let engine = null;
+async function startEngine() {
+  const ctx = audioCtx(), buf = await buffer('engine'); if (!ctx || !buf || engine) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0;
+  src.connect(g).connect(ctx.destination); src.start(); engine = { src, g };
+}
+function updateEngine(r, audible) { // r: speed / fast. Idle rumble at rest, revving up to SUPER FAST
+  if (!engine) return; const ctx = actx, k = Math.min(1.5, r) / 1.5;
+  engine.src.playbackRate.setTargetAtTime(0.7 + 0.75 * k, ctx.currentTime, 0.25);
+  engine.g.gain.setTargetAtTime(audible ? ENGINE_VOL * (0.6 + 0.7 * k) : 0, ctx.currentTime, 0.15);
+}
 const SFX_VOL = 0.75; // the files are all normalised to the same loudness (-16 LUFS), so they all play at one volume
 function play(name) { try { const a = SFX[name].cloneNode(); a.volume = SFX_VOL; a.play().catch(() => {}); } catch (e) {} }
 const shouts = []; // comic "!" lines
@@ -1208,15 +1261,16 @@ function updateTracks(t) {
   trackGeo.attributes.color.needsUpdate = true;
 }
 
+document.addEventListener('visibilitychange', () => { if (document.hidden) updateEngine(0, false); }); // no engine noise from a hidden tab
 let onScreen = true; // skip the work while the game is scrolled out of view (or its tab is hidden)
 new IntersectionObserver(e => { onScreen = e[0].isIntersecting; }).observe(canvas);
 function frame() {
   requestAnimationFrame(frame);
-  if (!onScreen) { clock.getDelta(); return; }
+  if (!onScreen) { clock.getDelta(); updateEngine(0, false); return; }
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   step(dt);
   // sync visuals
-  syncCar(); updateTracks(t);
+  syncCar(); updateTracks(t); updateEngine(chassisBody.velocity.length() / VMAX, !document.hidden);
   wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(ZF, zfW)) * dt / WHEEL_R;
   for (const a of carAxles) a.rotation.x = wheelSpin;
   // camera: fixed isometric angle, follows the car smoothly
@@ -1240,7 +1294,7 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateTrees(dt); updateNeedles(dt, t); updateHouses(t); updateClouds(dt); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
+  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateTrees(dt); updateNeedles(dt, t); updateHouses(t); updateClouds(dt); updateExhaust(dt); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
@@ -1262,7 +1316,7 @@ let frameNo = 0;
 
 $('loading').style.display = 'none';
 const startEl = $('start'); startEl.style.display = 'flex';
-const begin = () => { if (started) return; started = true; startEl.style.display = 'none'; canvas.focus(); toast('Follow the blue beams to the fragments'); };
+const begin = () => { if (started) return; started = true; startEngine(); startEl.style.display = 'none'; canvas.focus(); toast('Follow the blue beams to the fragments'); };
 startEl.addEventListener('click', begin); $('startBtn').addEventListener('click', begin);
 window.addEventListener('keydown', begin, { once: true });
 frame();
