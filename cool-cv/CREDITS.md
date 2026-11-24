@@ -13,4 +13,4 @@ Changes: all models converted to glTF and restyled with toon materials in the ga
 
 License: https://creativecommons.org/licenses/by/4.0/
 
-Sound effects in `assets/sfx/`: car horn (`honk.mp3`) and dog bark (`bark.mp3`) by Dragon Studio; sheep (`sheep.mp3`) by stu9; cartoon voice (`person.mp3`) from the Freesound community; victory fanfare (`fanfare.mp3`) by Chisper. Hard slap (`slap.mp3`, trimmed) and engine (`engine.wav`, made into a seamless loop) from the Freesound community on Pixabay (46388, 47745). All effects are normalised to -16 LUFS.
+Sound effects in `assets/sfx/`: car horn (`honk.mp3`) and dog bark (`bark.mp3`) by Dragon Studio; sheep (`sheep.mp3`) by stu9; cartoon voice (`person.mp3`) from the Freesound community; victory fanfare (`fanfare.mp3`) by Chisper. Hard slap (`slap.mp3`, trimmed) and engine (`engine.wav`, made into a seamless loop) from the Freesound community on Pixabay (46388, 47745); tree hit (`tree.mp3`, trimmed) by u_xjrmmgxfru on Pixabay (266306). The wooden knock on houses is synthesised in the browser. All effects are normalised to -16 LUFS.
