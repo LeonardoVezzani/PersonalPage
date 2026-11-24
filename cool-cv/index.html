@@ -19,11 +19,11 @@
   #speed { right: 10px; bottom: 8px; display: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
   #speed svg { width: 170px; height: 93px; display: block; overflow: visible; }
   /* speedometer in the crawler's colours (cream, mustard, anthracite) with the dog's orange needle */
-  #speed .disc { fill: #d5d1bf; stroke: #2f2f31; stroke-width: 2.5; }
-  #speed text { font: 800 7px "JetBrains Mono", ui-monospace, monospace; fill: #2f2f31; stroke: #d5d1bf; stroke-width: 2.4px; stroke-linejoin: round; paint-order: stroke; }
-  #speed .arc { stroke: #d3b65b; } #speed .hot { stroke: #d7263d; } #speed .tick { stroke: #565659; }
-  #needle line { stroke: #ff8a1f; } #needle circle { fill: #2e2217; stroke: #ff8a1f; stroke-width: 1.5; }
-  #speed #superTxt text { fill: #d7263d; }
+  #speed .disc { fill: #2f2f31; stroke: #d3b65b; stroke-width: 2.5; }
+  #speed text { font: 800 7px "JetBrains Mono", ui-monospace, monospace; fill: #d5d1bf; stroke: #2f2f31; stroke-width: 2.4px; stroke-linejoin: round; paint-order: stroke; }
+  #speed .arc { stroke: #d3b65b; } #speed .hot { stroke: #ff4a5c; } #speed .tick { stroke: #d5d1bf; }
+  #needle line { stroke: #ff8a1f; } #needle circle { fill: #d5d1bf; stroke: #ff8a1f; stroke-width: 1.5; }
+  #speed #superTxt text { fill: #ff4a5c; }
   #superTxt { transform-box: fill-box; transform-origin: 50% 60%; }
   /* reaching SUPER FAST!: crouch (anticipation), burst out, settle with a wobble */
   #superTxt.boom { animation: superBoom .75s cubic-bezier(.3,.6,.4,1) both; }
@@ -150,6 +150,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=33"></script>
+<script type="module" src="./game.js?v=34"></script>
 </body>
 </html>
