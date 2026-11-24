@@ -846,8 +846,9 @@ for (const h of SCENERY.houses) houseByBody.set(h.body, h);
 let houseHitQueue = [];
 chassisBody.addEventListener('collide', e => {
   const h = houseByBody.get(e.body); if (!h || h.flying) return;
-  const r = chassisBody.velocity.length() / VMAX; if (r > 0.25) woodKnock(r); // a bump into a house: a dull wooden knock
-  if (r < 1.35) return; // flying only at SUPER FAST
+  const r = chassisBody.velocity.length() / VMAX, now = performance.now(), fresh = now - (h.lastTouch || -1e9) > 400; h.lastTouch = now; // contacts repeat while the crawler leans on the house: one knock per bump
+  if (r < 1.35) { if (fresh && r > 0.25) woodKnock(r); return; } // a bump: a single dull wooden knock
+  slap(1, true); // SUPER FAST: the house goes flying with a heavy slap
   h.flying = true; houseHitQueue.push({ h, v: chassisBody.velocity.clone() });
 });
 function landingSpot(h, dirx, dirz) { // a free spot ahead, on dry ground, away from the other houses
@@ -889,7 +890,7 @@ function updateHouses(t) {
       if (!f.landed) {
         f.landed = true; h.x = f.x1; h.y = f.y1; h.z = f.z1; h.rot += f.spin;
         h.body.position.set(h.x, h.y + h.hy, h.z); h.body.quaternion.setFromEuler(0, h.rot, 0); world.addBody(h.body);
-        dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35); woodKnock(1);
+        dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35); lastSlap = 0; slap(0.85, true); // lands with a heavy slap
       }
       const sy = kk >= 1 ? 1 : 1 - Math.exp(-4.5 * kk) * Math.cos(13 * kk) * 0.45; // from 0.55 (flat) through a stretch back to 1
       placeInstance(h, h.x, h.y, h.z, houseQ.identity(), 0, sy);
@@ -918,13 +919,13 @@ const BUFS = {}; const bufFetch = { slap: fetch('assets/sfx/slap.mp3').then(r =>
 function audioCtx() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; } catch (e) { return null; } }
 async function buffer(name) { if (BUFS[name] !== undefined) return BUFS[name]; const ab = await bufFetch[name], ctx = audioCtx(); BUFS[name] = ab && ctx ? await ctx.decodeAudioData(ab.slice(0)).catch(() => null) : null; return BUFS[name]; }
 let lastSlap = 0;
-async function slap(strength = 1) { // thump! never quite the same twice
+async function slap(strength = 1, heavy = false) { // thump! never quite the same twice; heavy: lower, slower, duller (a flying house)
   const now = performance.now(); if (now - lastSlap < 70) return; lastSlap = now;
   const ctx = audioCtx(), buf = await buffer('slap'); if (!ctx || !buf) return;
   const src = ctx.createBufferSource(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
-  src.buffer = buf; src.playbackRate.value = 0.72 + Math.random() * 0.6; // lower and slower, or higher and snappier
-  lp.type = 'lowpass'; lp.frequency.value = 1600 + Math.random() * 7000; lp.Q.value = 0.5 + Math.random() * 2; // duller or brighter
-  g.gain.value = SFX_VOL * 0.6 * Math.min(1, strength) * (0.55 + Math.random() * 0.45);
+  src.buffer = buf; src.playbackRate.value = heavy ? 0.5 + Math.random() * 0.15 : 0.72 + Math.random() * 0.6; // lower and slower, or higher and snappier
+  lp.type = 'lowpass'; lp.frequency.value = heavy ? 700 + Math.random() * 500 : 1600 + Math.random() * 7000; lp.Q.value = 0.5 + Math.random() * 2; // duller or brighter
+  g.gain.value = SFX_VOL * (heavy ? 0.9 : 0.6) * Math.min(1, strength) * (0.55 + Math.random() * 0.45);
   src.connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.015);
 }
 let lastTreeHit = 0;
