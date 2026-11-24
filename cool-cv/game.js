@@ -278,7 +278,7 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
 {
   const keepClear = [START, DOG_POS, ...CV.map(c => c.pos)];
   const free = (x, z, r) => inside(x, z) && Math.hypot(x, z) < rimAt(x, z) - 8 && keepClear.every(([px, pz]) => Math.hypot(x - px, z - pz) > r) && Math.hypot(x - LAKE.x, z - LAKE.z) > LAKE.r * 1.3;
-  const solid = (x, y, z, hx, hy, hz, rot) => { const b = new CANNON.Body({ mass: 0 }); b.addShape(new CANNON.Box(new CANNON.Vec3(hx, hy, hz))); b.position.set(x, y + hy, z); b.quaternion.setFromEuler(0, rot, 0); world.addBody(b); };
+  const solid = (x, y, z, hx, hy, hz, rot) => { const b = new CANNON.Body({ mass: 0 }); b.addShape(new CANNON.Box(new CANNON.Vec3(hx, hy, hz))); b.position.set(x, y + hy, z); b.quaternion.setFromEuler(0, rot, 0); world.addBody(b); return b; };
   // hamlets
   const HAMLETS = [[0, 30], [60, 32], [130, 24], [175, 40], [250, 30], [300, 38], [15, 62], [195, 70], [270, 64]];
   let n = 0, seed = 1;
@@ -292,7 +292,7 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
       if (SCENERY.houses.some(o => Math.hypot(x - o.x, z - o.z) < 1.6 * (o.sc + scTry) + 1)) continue; // keep a gap between houses
       const HOUSE_K = 1.5; // houses at 1.5x
       const sc = (0.85 + hash(seed, 9) * 0.3) * HOUSE_K, h = (0.8 + hash(seed, 11) * 0.4) * HOUSE_K, rot = hash(seed, 13) * Math.PI;
-      solid(x, y, z, 1.2 * sc, h + 0.6, 1.2 * sc, rot); SCENERY.houses.push({ x, y, z, rot, sc });
+      const body = solid(x, y, z, 1.2 * sc, h + 0.6, 1.2 * sc, rot); SCENERY.houses.push({ x, y, z, rot, sc, body, hy: h + 0.6 });
       n++; k++;
     }
   }
@@ -447,7 +447,7 @@ function instance(model, places, CHUNK = 50) { // one InstancedMesh per map chun
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), V = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
   for (const list of chunks.values()) {
     const im = new THREE.InstancedMesh(geometry, material, list.length);
-    list.forEach((t, i) => im.setMatrixAt(i, M.compose(V.set(t.x, t.y, t.z), Q.setFromAxisAngle(Y, t.rot), S.setScalar(t.sc))));
+    list.forEach((t, i) => { im.setMatrixAt(i, M.compose(V.set(t.x, t.y, t.z), Q.setFromAxisAngle(Y, t.rot), S.setScalar(t.sc))); t.im = im; t.idx = i; });
     im.castShadow = im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
   }
 }
@@ -630,14 +630,20 @@ function comicHit(w, cp) {
   el.innerHTML = `<div class="balloon ${w.kind}" style="--fx:${Math.random() < 0.5 ? -1 : 1};--tilt:${(Math.random() * 10 - 5).toFixed(1)}deg"><span>${line}</span></div>`;
   comicLayer.appendChild(el); balloons.set(w, { el, t0: now() });
 }
+function comicBang(key, x, y, z, word) { // a starburst on its own, e.g. where the crawler rams a house
+  const old = bangs.get(key); if (old) old.el.remove();
+  const el = document.createElement('div'); el.className = 'comic big';
+  el.innerHTML = `<svg class="burst" viewBox="0 0 100 100" style="--r:${(Math.random() * 30 - 15).toFixed(0)}deg"><path d="${BURST}"/><text x="50" y="56" text-anchor="middle">${word}</text></svg>`;
+  comicLayer.appendChild(el); bangs.set(key, { el, at: new THREE.Vector3(x, y, z), t0: now() });
+}
 const cProj = new THREE.Vector3();
 function placeAt(el, v) { cProj.copy(v).project(camera); el.style.left = ((cProj.x + 1) / 2 * 100) + '%'; el.style.top = ((1 - cProj.y) / 2 * 100) + '%'; }
 const fade = (t, life, f) => String(Math.max(0, Math.min(1, (life - t) / f)));
 function updateComics() {
   const tn = now();
   for (const [w, c] of bangs) {
-    const t = tn - c.t0; if (t > BANG_T) { c.el.remove(); bangs.delete(w); continue; }
-    placeAt(c.el, c.at); c.el.style.opacity = fade(t, BANG_T, 0.12);
+    const life = c.el.classList.contains('big') ? 0.9 : BANG_T, t = tn - c.t0; if (t > life) { c.el.remove(); bangs.delete(w); continue; }
+    placeAt(c.el, c.at); c.el.style.opacity = fade(t, life, 0.15);
   }
   for (const [w, c] of balloons) {
     const t = tn - c.t0; if (t > BALLOON_T) { c.el.remove(); balloons.delete(w); continue; }
@@ -715,6 +721,96 @@ function burst(x, y, z, n = Math.round(46 * FX)) { // the little blue explosion 
     parts.setColorAt(pNext, tmpC.set(cols[k % cols.length])); pNext = (pNext + 1) % PARTS;
   }
   parts.instanceColor.needsUpdate = true;
+}
+function dust(x, y, z, n = Math.round(40 * FX)) { // a puff of earth where something heavy lands
+  const cols = SURF.earth.concat(SURF.grass);
+  for (let k = 0; k < n; k++) {
+    const q = pState[pNext], a = Math.random() * Math.PI * 2, sp = 4 + Math.random() * 7;
+    Object.assign(q, { life: 0.6 + Math.random() * 0.5, x: x + Math.cos(a) * 1.5, y: y + 0.3, z: z + Math.sin(a) * 1.5, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 2 + Math.random() * 5, s: 0.8 + Math.random() * 0.8 });
+    parts.setColorAt(pNext, tmpC.set(cols[k % cols.length])); pNext = (pNext + 1) % PARTS;
+  }
+  parts.instanceColor.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------- springy trees and flying houses
+const instM = new THREE.Matrix4(), instT = new THREE.Matrix4(), instQ = new THREE.Quaternion(), instY = new THREE.Quaternion(), instA = new THREE.Vector3(), UPV = new THREE.Vector3(0, 1, 0);
+function placeInstance(t, x, y, z, tilt, pivotY = 0, sy = 1) { // M = T(base + pivot) · R(tilt · yaw) · T(-pivot) · S; sy squashes the height
+  if (!t.im) return;
+  instQ.copy(tilt).multiply(instY.setFromAxisAngle(UPV, t.rot));
+  instM.makeScale(t.sc, t.sc * sy, t.sc).premultiply(instT.makeTranslation(0, -pivotY, 0)).premultiply(instT.makeRotationFromQuaternion(instQ)).premultiply(instT.makeTranslation(x, y + pivotY, z));
+  t.im.setMatrixAt(t.idx, instM); t.im.instanceMatrix.needsUpdate = true;
+}
+// trees bend away from the crawler like springs: pressed nearly flat while you are over them, then they straighten with a soft wobble
+const TREE_K = 20, TREE_C = 4.4, TREE_MAX = 1.35; // spring stiffness, damping (ζ ≈ 0.5), deepest bend in radians
+const treeQ = new THREE.Quaternion();
+function updateTrees(dt) {
+  const cp = car.position, v = chassisBody.velocity, sp = Math.hypot(v.x, v.z);
+  for (const t of SCENERY.trees) {
+    if (!t.im) return; // not loaded yet
+    const dx = t.x - cp.x, dz = t.z - cp.z, d = Math.hypot(dx, dz), R = 3.1 + 0.5 * t.sc;
+    let th = t.th || 0, om = t.om || 0;
+    if (d < R) { // pressed: bend away from the crawler, mostly along its direction of travel
+      let bx = dx / (d || 1) * 0.6, bz = dz / (d || 1) * 0.6; if (sp > 1) { bx += v.x / sp; bz += v.z / sp; } const bl = Math.hypot(bx, bz) || 1;
+      t.bx = bx / bl; t.bz = bz / bl;
+      const k = 1 - d / R, target = TREE_MAX * Math.min(1, k * k * (3 - 2 * k) * 1.6), nth = th + (target - th) * Math.min(1, dt * 14);
+      om = (nth - th) / Math.max(dt, 1e-3); th = nth;
+    } else if (Math.abs(th) > 0.002 || Math.abs(om) > 0.01) { // released: a damped spring back to upright
+      om += (-TREE_K * th - TREE_C * om) * dt; th += om * dt;
+    } else { if (t.th) { t.th = 0; t.om = 0; placeInstance(t, t.x, t.y, t.z, treeQ.identity()); } continue; }
+    t.th = th; t.om = om;
+    placeInstance(t, t.x, t.y, t.z, treeQ.setFromAxisAngle(instA.set(t.bz, 0, -t.bx), th));
+  }
+}
+// houses: hit one at SUPER FAST and it is sent tumbling, two full rolls, and lands upright a little further on
+const HOUSE_FLIGHT = 1.05, flying = [], houseByBody = new Map();
+for (const h of SCENERY.houses) houseByBody.set(h.body, h);
+let houseHitQueue = [];
+chassisBody.addEventListener('collide', e => {
+  const h = houseByBody.get(e.body); if (!h || h.flying) return;
+  if (chassisBody.velocity.length() / VMAX < 1.35) return; // only at SUPER FAST
+  h.flying = true; houseHitQueue.push({ h, v: chassisBody.velocity.clone() });
+});
+function landingSpot(h, dirx, dirz) { // a free spot ahead, on dry ground, away from the other houses
+  for (const D of [14, 12, 16, 10, 18, 8]) for (const turn of [0, 0.35, -0.35, 0.7, -0.7]) {
+    const c = Math.cos(turn), sn = Math.sin(turn), ux = dirx * c - dirz * sn, uz = dirx * sn + dirz * c, x = h.x + ux * D, z = h.z + uz * D, y = groundAt(x, z);
+    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 8 || y < WATER_Y + 0.4) continue;
+    if (SCENERY.houses.some(o => o !== h && Math.hypot(x - o.x, z - o.z) < 1.6 * (o.sc + h.sc) + 1)) continue;
+    return [x, y, z, ux, uz];
+  }
+  return null;
+}
+function launchHouses(t) { // after the physics step: take the house out of the world and send it flying
+  for (const { h, v } of houseHitQueue) {
+    const s = Math.hypot(v.x, v.z) || 1, spot = landingSpot(h, v.x / s, v.z / s);
+    if (!spot) { h.flying = false; continue; }
+    world.removeBody(h.body); h.im.frustumCulled = false;
+    const [x1, y1, z1, ux, uz] = spot;
+    flying.push({ h, t0: t, x0: h.x, y0: h.y, z0: h.z, x1, y1, z1, ax: uz, az: -ux, spin: (Math.random() < 0.5 ? -1 : 1) * Math.PI * (0.5 + Math.random()) });
+    chassisBody.velocity.copy(v).scale(0.85, chassisBody.velocity); // the crawler ploughs on
+    play('honk'); comicBang(h, h.x - ux * 1.6 * h.sc, h.y + 2.2, h.z - uz * 1.6 * h.sc, 'KABOOM!');
+  }
+  houseHitQueue = [];
+}
+const houseQ = new THREE.Quaternion(), houseQ2 = new THREE.Quaternion();
+function updateHouses(t) {
+  for (let i = flying.length - 1; i >= 0; i--) {
+    const f = flying[i], h = f.h, k = Math.min(1, (t - f.t0) / HOUSE_FLIGHT), pivot = 1.3 * h.sc;
+    if (k < 1) { // an arc, rolling over twice about the axis across the flight, and a lazy turn about the vertical
+      const x = f.x0 + (f.x1 - f.x0) * k, z = f.z0 + (f.z1 - f.z0) * k, y = f.y0 + (f.y1 - f.y0) * k + 9 * 4 * k * (1 - k);
+      houseQ.setFromAxisAngle(instA.set(f.ax, 0, f.az), k * Math.PI * 4).multiply(houseQ2.setFromAxisAngle(UPV, f.spin * k));
+      placeInstance(h, x, y, z, houseQ, pivot);
+    } else { // landed: squash, a puff of dust, solid again where it stands
+      const kk = (t - f.t0 - HOUSE_FLIGHT) / 0.45;
+      if (!f.landed) {
+        f.landed = true; h.x = f.x1; h.y = f.y1; h.z = f.z1; h.rot += f.spin;
+        h.body.position.set(h.x, h.y + h.hy, h.z); h.body.quaternion.setFromEuler(0, h.rot, 0); world.addBody(h.body);
+        dust(h.x, h.y, h.z); tone(130, 45, 0.35, 0.35);
+      }
+      const sy = kk >= 1 ? 1 : 1 - Math.exp(-5 * kk) * Math.cos(12 * kk) * 0.3; // squash on impact, wobble, settle
+      placeInstance(h, h.x, h.y, h.z, houseQ.identity(), 0, sy);
+      if (kk >= 1) { h.flying = false; h.im.computeBoundingSphere(); h.im.frustumCulled = true; flying.splice(i, 1); }
+    }
+  }
 }
 // ---------------------------------------------------------------- horn (or bark) and confetti
 const SFX = { honk: new Audio('assets/sfx/honk.mp3'), bark: new Audio('assets/sfx/bark.mp3'), sheep: new Audio('assets/sfx/sheep.mp3'), person: new Audio('assets/sfx/person.mp3'), fanfare: new Audio('assets/sfx/fanfare.mp3') };
@@ -1008,6 +1104,7 @@ function step(dt) {
     prevPos.copy(chassisBody.position); prevQuat.copy(chassisBody.quaternion);
     world.step(STEP); settleOnWheels(); stepAcc -= STEP;
   }
+  launchHouses(clock.elapsedTime);
 }
 function syncCar() { // position and orientation a fraction of the way from the previous step to the current one
   const k = stepAcc / STEP, p = chassisBody.position, q = chassisBody.quaternion;
@@ -1087,7 +1184,7 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
+  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateTrees(dt); updateHouses(t); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
