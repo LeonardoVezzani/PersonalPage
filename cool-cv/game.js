@@ -692,7 +692,7 @@ for (let i = 0; i < PARTS; i++) { parts.setMatrixAt(i, tmpM.makeScale(0, 0, 0));
 function updateParticles(dt) {
   const v = chassisBody.velocity, sp = Math.hypot(v.x, v.z);
   if (sp > 3 && started) {
-    const fx = Math.sin(carYaw), fz = Math.cos(carYaw), n = Math.random() < FX ? (sp > 10 ? 3 : 2) : 1;
+    const fx = Math.sin(carYaw), fz = Math.cos(carYaw), n = Math.random() < FX * 0.5 ? (sp > 10 ? 2 : 1) : (Math.random() < 0.5 ? 1 : 0); // about half the dust of before, so the exhaust shows
     for (const wi of [2, 3]) for (let k = 0; k < n; k++) { // rear wheels
       const wp = chassisBody.pointToWorldFrame(WHEELS[wi], wheelW), surf = surfaceAt(wp.x, wp.z), q = pState[pNext];
       q.life = 0.5 + Math.random() * 0.4; q.x = wp.x - fx * WHEEL_R; q.z = wp.z - fz * WHEEL_R; q.y = groundAt(wp.x, wp.z) + 0.3;
@@ -708,7 +708,7 @@ function updateParticles(dt) {
     const q = pState[i]; if (q.life <= 0) continue; alive = true;
     q.life -= dt; q.vy -= 16 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
     const g = groundAt(q.x, q.z); if (q.y < g) { q.y = g; q.vy *= -0.2; q.vx *= 0.6; q.vz *= 0.6; }
-    const s = Math.max(0, q.life) * 1.6 * q.s; parts.setMatrixAt(i, tmpM.makeScale(s, s, s).setPosition(q.x, q.y, q.z));
+    const s = Math.max(0, q.life) * 1.3 * q.s; parts.setMatrixAt(i, tmpM.makeScale(s, s, s).setPosition(q.x, q.y, q.z));
   }
   if (alive || partsWasAlive) parts.instanceMatrix.needsUpdate = true; partsWasAlive = alive;
 }
@@ -776,7 +776,7 @@ function updateNeedles(dt, t) {
 const PUFF_LIFE = 3.5, PUFF_RATE = 2, PUFF_N = 10, WHEEL_D = 2 * WHEEL_R;
 const EXHAUST = new CANNON.Vec3(-AX * 0.72, -1.3 * SIZE_K + WHEEL_R * 0.35, -AZ - WHEEL_R * 1.3), exW = new CANNON.Vec3();
 const puffGeo = new THREE.IcosahedronGeometry(0.5, 0), puffs = [];
-for (let i = 0; i < PUFF_N; i++) { const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color: 0x1a1817, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.renderOrder = 4; scene.add(m); puffs.push({ m, life: 0 }); }
+for (let i = 0; i < PUFF_N; i++) { const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color: 0x0b0a0a, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.renderOrder = 4; scene.add(m); puffs.push({ m, life: 0 }); }
 let puffNext = 0, puffAcc = 0;
 function updateExhaust(dt) {
   if (!started) return;
@@ -787,15 +787,15 @@ function updateExhaust(dt) {
     p.life = PUFF_LIFE * (0.9 + Math.random() * 0.2); p.max = p.life; p.m.visible = true;
     p.m.position.set(exW.x, exW.y, exW.z); p.vx = back.x * 1.2 + (Math.random() - 0.5) * 0.4; p.vz = back.z * 1.2 + (Math.random() - 0.5) * 0.4; p.vy = 0.35 + Math.random() * 0.25;
     p.m.rotation.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3); p.spin = (Math.random() - 0.5) * 0.8;
-    p.shape = [0.8 + Math.random() * 0.45, 0.75 + Math.random() * 0.4, 0.8 + Math.random() * 0.45]; p.s0 = (0.85 + Math.random() * 0.3) * WHEEL_D / 4;
+    p.shape = [0.8 + Math.random() * 0.45, 0.75 + Math.random() * 0.4, 0.8 + Math.random() * 0.45]; p.s0 = (0.85 + Math.random() * 0.3) * WHEEL_D / 4 * 1.2;
   }
   for (const p of puffs) {
     if (p.life <= 0) { if (p.m.visible) p.m.visible = false; continue; }
     p.life -= dt; const k = 1 - p.life / p.max, e = 1 - Math.pow(1 - k, 2); // grows fast, then slowly
     p.vx *= 1 - Math.min(1, dt * 1.2); p.vz *= 1 - Math.min(1, dt * 1.2);
     p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.rotation.y += p.spin * dt;
-    const s = p.s0 + (WHEEL_D * 2 / 3 - p.s0) * e; p.m.scale.set(s * p.shape[0], s * p.shape[1], s * p.shape[2]);
-    p.m.material.opacity = 0.55 * (1 - k) * (1 - k * 0.4);
+    const s = p.s0 + (WHEEL_D * 2 / 3 * 1.2 - p.s0) * e; p.m.scale.set(s * p.shape[0], s * p.shape[1], s * p.shape[2]);
+    p.m.material.opacity = 0.7 * (1 - k) * (1 - k * 0.4);
   }
 }
 // a big, thin dust cloud where a house lands
@@ -825,7 +825,9 @@ function updateTrees(dt) {
     if (!t.im) return; // not loaded yet
     const dx = t.x - cp.x, dz = t.z - cp.z, d = Math.hypot(dx, dz), R = 3.1 + 0.5 * t.sc;
     let th = t.th || 0, om = t.om || 0;
+    if (d >= R) t.pressed = false; // free again: the next contact knocks
     if (d < R) { // pressed: bend away from the crawler, mostly along its direction of travel
+      if (!t.pressed && sp > 2) treeHit(sp / VMAX); t.pressed = true;
       let bx = dx / (d || 1) * 0.6, bz = dz / (d || 1) * 0.6; if (sp > 1) { bx += v.x / sp; bz += v.z / sp; } const bl = Math.hypot(bx, bz) || 1;
       t.bx = bx / bl; t.bz = bz / bl;
       const k = 1 - d / R, target = TREE_MAX * Math.min(1, k * k * (3 - 2 * k) * 1.6), nth = th + (target - th) * Math.min(1, dt * 14);
@@ -844,7 +846,7 @@ for (const h of SCENERY.houses) houseByBody.set(h.body, h);
 let houseHitQueue = [];
 chassisBody.addEventListener('collide', e => {
   const h = houseByBody.get(e.body); if (!h || h.flying) return;
-  const r = chassisBody.velocity.length() / VMAX; if (r > 0.25) slap(r); // a bump into a house
+  const r = chassisBody.velocity.length() / VMAX; if (r > 0.25) woodKnock(r); // a bump into a house: a dull wooden knock
   if (r < 1.35) return; // flying only at SUPER FAST
   h.flying = true; houseHitQueue.push({ h, v: chassisBody.velocity.clone() });
 });
@@ -887,7 +889,7 @@ function updateHouses(t) {
       if (!f.landed) {
         f.landed = true; h.x = f.x1; h.y = f.y1; h.z = f.z1; h.rot += f.spin;
         h.body.position.set(h.x, h.y + h.hy, h.z); h.body.quaternion.setFromEuler(0, h.rot, 0); world.addBody(h.body);
-        dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35); slap(1);
+        dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35); woodKnock(1);
       }
       const sy = kk >= 1 ? 1 : 1 - Math.exp(-4.5 * kk) * Math.cos(13 * kk) * 0.45; // from 0.55 (flat) through a stretch back to 1
       placeInstance(h, h.x, h.y, h.z, houseQ.identity(), 0, sy);
@@ -912,7 +914,7 @@ const chime = () => { tone(784, 784, 0.22, 0.16, 'triangle'); tone(1175, 1175, 0
 const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 700, 0.07, 0.2);
 const ndc = new THREE.Vector3(), onCamera = p => { ndc.copy(p).project(camera); return Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1; };
 // Web Audio sounds: the slap (a different pitch, speed, loudness and tone every time) and the engine loop, which follows the speed
-const BUFS = {}; const bufFetch = { slap: fetch('assets/sfx/slap.mp3').then(r => r.arrayBuffer()).catch(() => null), engine: fetch('assets/sfx/engine.wav').then(r => r.arrayBuffer()).catch(() => null) };
+const BUFS = {}; const bufFetch = { slap: fetch('assets/sfx/slap.mp3').then(r => r.arrayBuffer()).catch(() => null), engine: fetch('assets/sfx/engine.wav').then(r => r.arrayBuffer()).catch(() => null), tree: fetch('assets/sfx/tree.mp3').then(r => r.arrayBuffer()).catch(() => null) };
 function audioCtx() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; } catch (e) { return null; } }
 async function buffer(name) { if (BUFS[name] !== undefined) return BUFS[name]; const ab = await bufFetch[name], ctx = audioCtx(); BUFS[name] = ab && ctx ? await ctx.decodeAudioData(ab.slice(0)).catch(() => null) : null; return BUFS[name]; }
 let lastSlap = 0;
@@ -922,10 +924,37 @@ async function slap(strength = 1) { // thump! never quite the same twice
   const src = ctx.createBufferSource(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
   src.buffer = buf; src.playbackRate.value = 0.72 + Math.random() * 0.6; // lower and slower, or higher and snappier
   lp.type = 'lowpass'; lp.frequency.value = 1600 + Math.random() * 7000; lp.Q.value = 0.5 + Math.random() * 2; // duller or brighter
-  g.gain.value = SFX_VOL * Math.min(1, strength) * (0.55 + Math.random() * 0.45);
+  g.gain.value = SFX_VOL * 0.6 * Math.min(1, strength) * (0.55 + Math.random() * 0.45);
   src.connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.015);
 }
-const ENGINE_VOL = 0.06; // very low under everything else
+let lastTreeHit = 0;
+async function treeHit(strength = 1) { // the crawler meets a trunk: the recorded knock, varied each time
+  const now = performance.now(); if (now - lastTreeHit < 90) return; lastTreeHit = now;
+  const ctx = audioCtx(), buf = await buffer('tree'); if (!ctx || !buf) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  src.buffer = buf; src.playbackRate.value = 0.78 + Math.random() * 0.5;
+  f.type = 'lowpass'; f.frequency.value = 2200 + Math.random() * 6000; f.Q.value = 0.4 + Math.random() * 1.5;
+  g.gain.value = SFX_VOL * 0.75 * Math.min(1, 0.5 + strength * 0.5) * (0.6 + Math.random() * 0.4);
+  src.connect(f).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.01);
+}
+let lastKnock = 0;
+function woodKnock(strength = 1) { // synthesised: a dull knock on a thick wooden plank, quiet. A low thump plus a few short wooden modes, muffled
+  const now = performance.now(); if (now - lastKnock < 90) return; lastKnock = now;
+  const ctx = audioCtx(); if (!ctx) return;
+  const t0 = ctx.currentTime, vol = SFX_VOL * 0.35 * Math.min(1, 0.4 + strength * 0.6), pitch = 0.85 + Math.random() * 0.3;
+  const out = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900 + Math.random() * 400; lp.Q.value = 0.7;
+  out.gain.value = vol; out.connect(lp).connect(ctx.destination);
+  for (const [f, a, d] of [[95, 1, 0.16], [182, 0.55, 0.09], [311, 0.3, 0.06], [467, 0.15, 0.04]]) { // modes of a plank: frequency, level, decay
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(f * pitch * 1.25, t0); o.frequency.exponentialRampToValueAtTime(f * pitch, t0 + 0.03);
+    g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(a, t0 + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g).connect(out); o.start(t0); o.stop(t0 + d + 0.02);
+  }
+  const n = ctx.createBufferSource(), nb = ctx.createBuffer(1, Math.round(ctx.sampleRate * 0.05), ctx.sampleRate), nd = nb.getChannelData(0); // the strike: a puff of noise
+  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.008));
+  const bp = ctx.createBiquadFilter(), ng = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = 420 * pitch; bp.Q.value = 1.2; ng.gain.value = 0.5;
+  n.buffer = nb; n.connect(bp).connect(ng).connect(out); n.start(t0);
+}
+const ENGINE_VOL = 0.16; // low, under everything else
 let engine = null;
 async function startEngine() {
   const ctx = audioCtx(), buf = await buffer('engine'); if (!ctx || !buf || engine) return;
