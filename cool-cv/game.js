@@ -734,11 +734,61 @@ function dust(x, y, z, n = Math.round(40 * FX)) { // a puff of earth where somet
 
 // ---------------------------------------------------------------- springy trees and flying houses
 const instM = new THREE.Matrix4(), instT = new THREE.Matrix4(), instQ = new THREE.Quaternion(), instY = new THREE.Quaternion(), instA = new THREE.Vector3(), UPV = new THREE.Vector3(0, 1, 0);
-function placeInstance(t, x, y, z, tilt, pivotY = 0, sy = 1) { // M = T(base + pivot) · R(tilt · yaw) · T(-pivot) · S; sy squashes the height
+function placeInstance(t, x, y, z, tilt, pivotY = 0, sy = 1) { // M = T(base + pivot) · R(tilt · yaw) · Squash · T(-pivot) · S: squash and stretch about the pivot, keeping the volume
   if (!t.im) return;
-  instQ.copy(tilt).multiply(instY.setFromAxisAngle(UPV, t.rot));
-  instM.makeScale(t.sc, t.sc * sy, t.sc).premultiply(instT.makeTranslation(0, -pivotY, 0)).premultiply(instT.makeRotationFromQuaternion(instQ)).premultiply(instT.makeTranslation(x, y + pivotY, z));
+  instQ.copy(tilt).multiply(instY.setFromAxisAngle(UPV, t.rot)); const sxz = 1 / Math.sqrt(sy);
+  instM.makeScale(t.sc, t.sc, t.sc).premultiply(instT.makeTranslation(0, -pivotY, 0)).premultiply(instT.makeScale(sxz, sy, sxz)).premultiply(instT.makeRotationFromQuaternion(instQ)).premultiply(instT.makeTranslation(x, y + pivotY, z));
   t.im.setMatrixAt(t.idx, instM); t.im.instanceMatrix.needsUpdate = true;
+}
+// pine needles: shed by a tree while it moves, they flutter slowly down and fade on the ground
+const NEEDLES = Math.round(500 * FX), needleMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffffff }), NEEDLES);
+needleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); needleMesh.frustumCulled = false; scene.add(needleMesh);
+const nState = Array.from({ length: NEEDLES }, () => ({ life: 0 })), NEEDLE_COLS = [0x6f7a2a, 0x8a9a3a, PAL.olive, 0x56601f];
+let nNext = 0, needlesWasAlive = false; const nM = new THREE.Matrix4(), nQ = new THREE.Quaternion(), nE = new THREE.Euler(), nP = new THREE.Vector3(), nS = new THREE.Vector3();
+for (let i = 0; i < NEEDLES; i++) { needleMesh.setMatrixAt(i, nM.makeScale(0, 0, 0)); needleMesh.setColorAt(i, tmpC.set(NEEDLE_COLS[i % 4])); }
+function shedNeedles(t, n) { // from the canopy of the tree as it is bent right now
+  const h = ASSETS.tree.height * t.sc, th = t.th || 0, bx = t.bx || 0, bz = t.bz || 0;
+  for (let k = 0; k < n; k++) {
+    const q = nState[nNext], up = 0.45 + Math.random() * 0.55, r = (1 - up) * 0.9 * t.sc + 0.2, a = Math.random() * Math.PI * 2;
+    Object.assign(q, { life: 3 + Math.random() * 1.5, x: t.x + Math.sin(th) * bx * h * up + Math.cos(a) * r, y: t.y + Math.cos(th) * h * up, z: t.z + Math.sin(th) * bz * h * up + Math.sin(a) * r,
+      vx: (Math.random() - 0.5) * 1.2 + (t.om || 0) * bx * 0.4, vz: (Math.random() - 0.5) * 1.2 + (t.om || 0) * bz * 0.4, vy: 0.6 + Math.random() * 0.8,
+      ph: Math.random() * 6.28, fr: 2 + Math.random() * 2, rx: Math.random() * 6.28, ry: Math.random() * 6.28, sr: (Math.random() - 0.5) * 6, landed: false });
+    needleMesh.setColorAt(nNext, tmpC.set(NEEDLE_COLS[(Math.random() * 4) | 0])); nNext = (nNext + 1) % NEEDLES;
+  }
+  needleMesh.instanceColor.needsUpdate = true;
+}
+function updateNeedles(dt, t) {
+  let alive = false;
+  for (let i = 0; i < NEEDLES; i++) {
+    const q = nState[i]; if (q.life <= 0) continue; alive = true; q.life -= dt;
+    if (!q.landed) { // falls slowly (air drag), swinging side to side like a leaf, spinning
+      q.vy += (-1.1 - q.vy) * Math.min(1, dt * 2.5); q.vx *= 1 - Math.min(1, dt * 1.5); q.vz *= 1 - Math.min(1, dt * 1.5);
+      const sw = Math.sin(t * q.fr + q.ph) * 0.9;
+      q.x += (q.vx + sw * Math.cos(q.ph)) * dt; q.z += (q.vz + sw * Math.sin(q.ph)) * dt; q.y += q.vy * dt; q.rx += q.sr * dt; q.ry += q.sr * 0.7 * dt;
+      const g = groundAt(q.x, q.z) + 0.05; if (q.y <= g) { q.y = g; q.landed = true; q.rx = Math.PI / 2; q.life = Math.min(q.life, 1.2); }
+    }
+    const s = Math.min(1, q.life / 0.6);
+    needleMesh.setMatrixAt(i, nM.compose(nP.set(q.x, q.y, q.z), nQ.setFromEuler(nE.set(q.landed ? 0 : q.rx, q.ry, 0)), nS.set(s, s, s)));
+  }
+  if (alive || needlesWasAlive) needleMesh.instanceMatrix.needsUpdate = true; needlesWasAlive = alive;
+}
+// a big, thin dust cloud where a house lands
+const clouds = [], cloudGeo = new THREE.IcosahedronGeometry(1, 1);
+function dustCloud(x, y, z, size) {
+  const N = 18, mat = new THREE.MeshBasicMaterial({ color: 0xcdbb8c, transparent: true, opacity: 0.3, depthWrite: false }), im = new THREE.InstancedMesh(cloudGeo, mat, N);
+  im.frustumCulled = false; im.renderOrder = 3; scene.add(im);
+  const puffs = Array.from({ length: N }, (_, i) => { const a = i / N * Math.PI * 2 + Math.random() * 0.4, r = size * (0.6 + Math.random() * 0.7); return { x: x + Math.cos(a) * r, z: z + Math.sin(a) * r, y: y + Math.random() * 0.8, ox: Math.cos(a), oz: Math.sin(a), s: size * (0.6 + Math.random() * 0.5) }; });
+  clouds.push({ im, mat, puffs, t: 0 });
+}
+function updateClouds(dt) {
+  for (let i = clouds.length - 1; i >= 0; i--) {
+    const c = clouds[i]; c.t += dt; const k = c.t / 2.4;
+    if (k >= 1) { scene.remove(c.im); c.im.dispose(); c.mat.dispose(); clouds.splice(i, 1); continue; }
+    const grow = 1 - Math.pow(1 - k, 3); // billows out fast, then drifts
+    c.mat.opacity = 0.3 * (1 - k) * (1 - k);
+    c.puffs.forEach((p, j) => c.im.setMatrixAt(j, nM.compose(nP.set(p.x + p.ox * grow * 3.5, p.y + grow * 2.2, p.z + p.oz * grow * 3.5), nQ.identity(), nS.setScalar(p.s * (0.6 + grow * 1.6)))));
+    c.im.instanceMatrix.needsUpdate = true;
+  }
 }
 // trees bend away from the crawler like springs: pressed nearly flat while you are over them, then they straighten with a soft wobble
 const TREE_K = 20, TREE_C = 4.4, TREE_MAX = 1.35; // spring stiffness, damping (ζ ≈ 0.5), deepest bend in radians
@@ -758,6 +808,7 @@ function updateTrees(dt) {
       om += (-TREE_K * th - TREE_C * om) * dt; th += om * dt;
     } else { if (t.th) { t.th = 0; t.om = 0; placeInstance(t, t.x, t.y, t.z, treeQ.identity()); } continue; }
     t.th = th; t.om = om;
+    t.shed = (t.shed || 0) + Math.abs(om) * dt * 11 * FX; if (t.shed >= 1) { const n = Math.min(6, t.shed | 0); t.shed -= n; shedNeedles(t, n); } // needles fly off while it moves
     placeInstance(t, t.x, t.y, t.z, treeQ.setFromAxisAngle(instA.set(t.bz, 0, -t.bx), th));
   }
 }
@@ -792,21 +843,26 @@ function launchHouses(t) { // after the physics step: take the house out of the 
   houseHitQueue = [];
 }
 const houseQ = new THREE.Quaternion(), houseQ2 = new THREE.Quaternion();
+const ANTIC = 0.14; // the house crouches for a moment before it goes
 function updateHouses(t) {
   for (let i = flying.length - 1; i >= 0; i--) {
-    const f = flying[i], h = f.h, k = Math.min(1, (t - f.t0) / HOUSE_FLIGHT), pivot = 1.3 * h.sc;
+    const f = flying[i], h = f.h, el = t - f.t0, pivot = 1.3 * h.sc;
+    if (el < ANTIC) { const a = el / ANTIC; placeInstance(h, f.x0, f.y0, f.z0, houseQ.identity(), 0, 1 - 0.32 * Math.sin(a * Math.PI / 2)); continue; } // squash: anticipation
+    const k = Math.min(1, (el - ANTIC) / HOUSE_FLIGHT);
     if (k < 1) { // an arc, rolling over twice about the axis across the flight, and a lazy turn about the vertical
       const x = f.x0 + (f.x1 - f.x0) * k, z = f.z0 + (f.z1 - f.z0) * k, y = f.y0 + (f.y1 - f.y0) * k + 9 * 4 * k * (1 - k);
+      // stretch as it leaves the ground (from the crouch), round in the air, stretch again as it falls
+      const sy = k < 0.4 ? 0.68 + 0.62 * Math.sin(Math.min(1, k / 0.2) * Math.PI / 2) - 0.3 * Math.max(0, (k - 0.2) / 0.2) : k > 0.7 ? 1 + 0.28 * (k - 0.7) / 0.3 : 1;
       houseQ.setFromAxisAngle(instA.set(f.ax, 0, f.az), k * Math.PI * 4).multiply(houseQ2.setFromAxisAngle(UPV, f.spin * k));
-      placeInstance(h, x, y, z, houseQ, pivot);
-    } else { // landed: squash, a puff of dust, solid again where it stands
-      const kk = (t - f.t0 - HOUSE_FLIGHT) / 0.45;
+      placeInstance(h, x, y, z, houseQ, pivot, sy);
+    } else { // landed: a hard squash, wobble back up, a big thin cloud, solid again where it stands
+      const kk = (el - ANTIC - HOUSE_FLIGHT) / 0.7;
       if (!f.landed) {
         f.landed = true; h.x = f.x1; h.y = f.y1; h.z = f.z1; h.rot += f.spin;
         h.body.position.set(h.x, h.y + h.hy, h.z); h.body.quaternion.setFromEuler(0, h.rot, 0); world.addBody(h.body);
-        dust(h.x, h.y, h.z); tone(130, 45, 0.35, 0.35);
+        dust(h.x, h.y, h.z); dustCloud(h.x, h.y, h.z, 2.2 * h.sc); tone(130, 45, 0.35, 0.35);
       }
-      const sy = kk >= 1 ? 1 : 1 - Math.exp(-5 * kk) * Math.cos(12 * kk) * 0.3; // squash on impact, wobble, settle
+      const sy = kk >= 1 ? 1 : 1 - Math.exp(-4.5 * kk) * Math.cos(13 * kk) * 0.45; // from 0.55 (flat) through a stretch back to 1
       placeInstance(h, h.x, h.y, h.z, houseQ.identity(), 0, sy);
       if (kk >= 1) { h.flying = false; h.im.computeBoundingSphere(); h.im.frustumCulled = true; flying.splice(i, 1); }
     }
@@ -1184,7 +1240,7 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateTrees(dt); updateHouses(t); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
+  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateTrees(dt); updateNeedles(dt, t); updateHouses(t); updateClouds(dt); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
