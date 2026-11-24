@@ -83,7 +83,7 @@ const CV = [ // the four CV pages hidden in the valley; their content is the CV 
   { id: 'pub', pos: PAGE_SPOTS[2], color: PAGE_BLUE },
   { id: 'exp', pos: SUMMIT, color: PAGE_BLUE }, // the last one, on the highest summit of the ring
 ];
-const CARPET_ROUTE = [];
+const CARPET_ROUTE = []; let carpetAstar = null; // the planner's A*, kept for detours from the crawler to the route
 const DOG_POS = (() => { // somewhere new every game: up on the mountains, at least a screen away from every CV page and from the start
   const ok = (x, z) => { const h = height(x, z), sl = Math.hypot(height(x + 1, z) - height(x - 1, z), height(x, z + 1) - height(x, z - 1)) / 2;
     return h > 7 && h < 15 && sl < 1.2 && Math.hypot(x, z) < rimAt(x, z) - 14 && Math.hypot(x, z - 8) > 30 && CV.every(c => Math.hypot(x - c.pos[0], z - c.pos[1]) > 40); };
@@ -347,11 +347,12 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
   route[route.length - 1] = [bx, bz];
   // plan on a grid (A*): close enough to the houses to thread between them, never over the lake
   const CELL = 1.5, HALFG = 122, NG = Math.ceil(2 * HALFG / CELL), CLEAR = 2.6;
-  const blocked = new Uint8Array(NG * NG), cellXZ = i => [-HALFG + (i % NG + 0.5) * CELL, -HALFG + (Math.floor(i / NG) + 0.5) * CELL];
+  const blocked = new Uint8Array(NG * NG), wetCell = new Uint8Array(NG * NG), cellXZ = i => [-HALFG + (i % NG + 0.5) * CELL, -HALFG + (Math.floor(i / NG) + 0.5) * CELL];
   for (let i = 0; i < NG * NG; i++) { const [x, z] = cellXZ(i);
-    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.25 || groundAt(x, z) < WATER_Y + 0.6) { blocked[i] = 1; continue; } // off the board, near the rim, over the lake or any water
+    if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 10 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.25 || groundAt(x, z) < WATER_Y + 0.6) { blocked[i] = 1; if (groundAt(x, z) < WATER_Y + 0.6 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r * 1.25) wetCell[i] = 1; continue; } // off the board, near the rim, over the lake or any water
     for (const hs of SCENERY.houses) if (Math.hypot(x - hs.x, z - hs.z) < CLEAR + hs.sc * 1.3) { blocked[i] = 1; break; } }
   const idx = (x, z) => Math.max(0, Math.min(NG - 1, Math.floor((x + HALFG) / CELL))) + Math.max(0, Math.min(NG - 1, Math.floor((z + HALFG) / CELL))) * NG;
+  carpetAstar = (from, to) => astar(from, to);
   function astar(from, to) {
     const s0 = idx(...from), g0 = idx(...to), gs = new Float32Array(NG * NG).fill(Infinity), came = new Int32Array(NG * NG).fill(-1), heap = [];
     const [tx, tz] = cellXZ(g0), hf = i => { const [x, z] = cellXZ(i); return Math.hypot(x - tx, z - tz); };
@@ -362,7 +363,7 @@ const SCENERY = { houses: [], trees: [] }; // placements; the models are instanc
       const [, c] = pop(); if (c === g0) break;
       const cx = c % NG, cz = Math.floor(c / NG);
       for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dz) continue;
-        const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= NG || nz >= NG) continue; const n = nx + nz * NG; if (blocked[n] && n !== g0) continue;
+        const nx = cx + dx, nz = cz + dz; if (nx < 0 || nz < 0 || nx >= NG || nz >= NG) continue; const n = nx + nz * NG; if (blocked[n] && n !== g0 && !(blocked[c] && !wetCell[n])) continue; // from inside a blocked zone (near the rim, by a house) it may walk out, never into water
         const ng = gs[c] + Math.hypot(dx, dz) * CELL; if (ng < gs[n]) { gs[n] = ng; came[n] = c; push(n, ng + hf(n)); } }
     }
     if (came[g0] < 0) return [from, to];
@@ -481,6 +482,9 @@ const chevrons = new THREE.InstancedMesh(chevGeo, chevMat, CHEVRONS); chevrons.c
 const chevM = new THREE.Matrix4(), chevQ = new THREE.Quaternion(), chevP = new THREE.Vector3(), chevS = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
 let carpetOn = false, carpetT0 = 0;
 let carpetSeg = 0; // the route segment the car has reached; the carpet only moves forward along the spiral
+const wetAt = (x, z) => groundAt(x, z) < WATER_Y + 0.3;
+const crossesWater = (ax, az, bx, bz) => { const L = Math.hypot(bx - ax, bz - az), n = Math.ceil(L / 1.5); for (let k = 1; k < n; k++) if (wetAt(ax + (bx - ax) * k / n, az + (bz - az) * k / n)) return true; return false; };
+let detour = null; // the last way round the water, reused while the crawler and the join point stay put
 function carpetPath(px, pz) {
   const route = CARPET_ROUTE; let best = 1e9, bi = 0, bp = null;
   const scan = (from, to) => { for (let i = Math.max(0, from); i < Math.min(route.length - 1, to); i++) {
@@ -491,7 +495,13 @@ function carpetPath(px, pz) {
   scan(carpetSeg - 1, carpetSeg + 5);           // follow the spiral turn by turn…
   if (best > 18) { best = 1e9; scan(0, route.length); } // …unless the car went somewhere else entirely
   if (best < 8) carpetSeg = Math.max(carpetSeg, bi);
-  const pts = [[px, pz]]; if (best > 6) pts.push(bp); else pts[0] = bp;
+  let pts = [[px, pz]];
+  if (best > 6) {
+    if (carpetAstar && !wetAt(px, pz) && crossesWater(px, pz, bp[0], bp[1])) { // the straight way to the route crosses the water: show the way round it
+      if (!detour || Math.hypot(px - detour.px, pz - detour.pz) > 3 || Math.hypot(bp[0] - detour.bx, bp[1] - detour.bz) > 3) detour = { px, pz, bx: bp[0], bz: bp[1], pts: carpetAstar([px, pz], bp) };
+      pts = [[px, pz], ...detour.pts.slice(1)];
+    } else pts.push(bp);
+  } else pts[0] = bp;
   for (let i = bi + 1; i < route.length; i++) pts.push(route[i]);
   return pts;
 }
@@ -504,7 +514,7 @@ function updateCarpet(t) {
     if (along > L) { along -= L; seg++; continue; }
     const x = ax + (bx - ax) * along / L, z = az + (bz - az) * along / L;
     chevS.setScalar(Math.max(0, bounce(Math.max(0, (t - carpetT0 - k * 0.05) / 0.5)))); // pop in one after the other
-    chevrons.setMatrixAt(k, chevM.compose(chevP.set(x, groundAt(x, z) + 0.35, z), chevQ.setFromAxisAngle(UP, Math.atan2(bx - ax, bz - az)), chevS));
+    chevrons.setMatrixAt(k, chevM.compose(chevP.set(x, Math.max(groundAt(x, z), WATER_Y) + 0.35, z), chevQ.setFromAxisAngle(UP, Math.atan2(bx - ax, bz - az)), chevS));
     chevAlpha.array[k] = 0.35 + 0.5 * (0.5 + 0.5 * Math.sin(t * 6 - k * 0.6));
     along += 1.9; k++;
   }
@@ -1210,7 +1220,7 @@ function updateFrags() { // the new quarter (and the counter) crouch and burst l
 }
 let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 2600); }
 let achTimer; function achievement(top, msg) { // Xbox-style banner, top right
-  const a = $('ach'); $('achTop').textContent = top; $('achMsg').textContent = msg;
+  const a = $('ach'); $('achTop').textContent = top; $('achMsg').innerHTML = msg; // msg may hold <b class="sec"> for the section names
   a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
   clearTimeout(achTimer); achTimer = setTimeout(() => a.classList.remove('show'), ACH_SECS * 1000);
 }
@@ -1252,7 +1262,7 @@ function collect(p) {
   p.got = true; p.group.visible = false; updateFrags();
   burst(p.group.position.x, p.group.position.y, p.group.position.z); chime();
   const last = p.id === 'exp', n = last ? 4 : pickups.slice(0, 3).filter(q => q.got).length; // 1st, 2nd or 3rd page, whatever the order
-  achievement(`Page ${n} / 4 · ${last ? 'HUD complete' : UNLOCKS[n - 1] + ' unlocked'}`, `${SECTION_NAMES[p.id]} added to the CV${EMBEDDED ? '. Scroll down to read them' : ''}`);
+  achievement(`Page ${n} / 4 · ${last ? 'HUD complete' : UNLOCKS[n - 1] + ' unlocked'}`, `<b class="sec">${SECTION_NAMES[p.id]}</b> added to the CV${EMBEDDED ? '. Scroll down to read them' : ''}`);
   if (EMBEDDED) window.parent.postMessage({ type: 'coolcv:reveal', id: p.id, last }, location.origin); // the page shows those sections
   if (last) { // confetti, a trophy rising from the summit, then the closing message
     carpetOn = false; chevrons.count = 0; confetti(); raiseTrophy(p.group.position);
@@ -1484,4 +1494,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, unlockQueue, get birds() { return birds.length; }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, unlockQueue, carpetPath, get birds() { return birds.length; }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
