@@ -13,9 +13,16 @@
   html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
   .hud { position: absolute; pointer-events: none; }
   .chip { background: var(--bg); border: 2px solid var(--border); border-radius: 6px; color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  #frags { left: 10px; bottom: 10px; width: 84px; padding: 4px 4px 2px; }
-  #frags svg { width: 76px; height: 76px; display: block; margin: 0 auto; }
-  #fragCount { text-align: center; font-size: 10px; color: var(--muted); }
+  /* CV fragments: the speedometer's look. A dark badge, a ring that thickens towards the bottom left (6 → 6·φ²), the document at the centre of the inner circle */
+  #frags { left: 10px; bottom: 8px; width: 92px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+  #frags svg { width: 92px; height: 92px; display: block; overflow: visible; }
+  #frags .disc { fill: #3a2a24; stroke: #6b5444; stroke-width: 2.5; }
+  #frags .q { fill: #54403a; transform-box: fill-box; transform-origin: 50% 50%; transition: fill .25s; }
+  #arc0.got { fill: #f4ecd4; } #arc1.got { fill: #e3b341; } #arc2.got { fill: #e08a3c; } #arc3.got { fill: #c4574a; } /* the speedometer's ramp: white, yellow, orange, red */
+  #frags .q.boom, #frags svg.boom { animation: superBoom .75s cubic-bezier(.3,.6,.4,1) both; }
+  #frags svg { transform-origin: 50% 50%; }
+  #fragCount { margin-top: -2px; text-align: center; font: 800 15px "JetBrains Mono", ui-monospace, monospace; letter-spacing: -.5px; color: #d2c69d; text-shadow: 0 0 2px #3a2a24, 0 0 2px #3a2a24, 1px 1px 0 #3a2a24, -1px -1px 0 #3a2a24, 1px -1px 0 #3a2a24, -1px 1px 0 #3a2a24; }
+  #fragCount.boom { animation: superBoom .75s cubic-bezier(.3,.6,.4,1) both; }
   #speed { right: 10px; bottom: 8px; display: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
   #speed svg { width: 170px; height: 93px; display: block; overflow: visible; }
   /* speedometer in the crawler's colours (cream, mustard, anthracite) with the dog's orange needle */
@@ -32,7 +39,8 @@
   #superShake.shake { animation: superShake .13s linear infinite; }
   @keyframes superShake { 0% { transform: translate(0, 0) rotate(0); } 20% { transform: translate(1.1px, -.8px) rotate(1.4deg); } 40% { transform: translate(-1px, .6px) rotate(-1.2deg); } 60% { transform: translate(.7px, .9px) rotate(.8deg); } 80% { transform: translate(-.9px, -.7px) rotate(-1.5deg); } 100% { transform: translate(0, 0) rotate(0); } }
   @keyframes superBoom { 0% { transform: scale(1); } 18% { transform: scale(.72, .66); } 42% { transform: scale(1.55) rotate(-6deg); } 60% { transform: scale(.88) rotate(3deg); } 78% { transform: scale(1.12) rotate(-1deg); } 100% { transform: scale(1); } }
-  #minimap { left: 10px; top: 10px; width: 150px; height: 190px; display: none; }
+  /* minimap: dark, with an even frame */
+  #minimap { left: 10px; top: 10px; width: 150px; height: 190px; display: none; background: #3a2a24; border: 5px solid #6b5444; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
   #toast { left: 50%; top: 18%; transform: translateX(-50%); font-size: 13px; font-weight: 700; padding: 7px 12px; opacity: 0; transition: opacity .3s; white-space: nowrap; }
   #finale, #start { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.3); }
   .panel { width: min(540px, 88vw); max-height: 82vh; overflow: auto; background: var(--bg); border: 2px solid var(--border); border-radius: 6px; padding: 16px 18px; font-size: 12.5px; line-height: 1.55; color: var(--fg); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
@@ -53,9 +61,7 @@
   #finaleCredits { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--muted); }
   #finaleCredits p { margin: 2px 0; } #finaleCredits ul { margin: 2px 0 4px; padding-left: 16px; }
   .panel .muted b { color: var(--fg); }
-  #frags path[id^="arc"] { stroke: var(--border); transition: stroke .3s; }
-  #frags path.got { stroke: var(--page); }
-  #docIcon { stroke: var(--fg); }
+  #docIcon { stroke: #d2c69d; }
   /* achievement banner, top right: a round badge that opens into a pill */
   #ach { right: 10px; top: 10px; display: flex; align-items: center; min-height: 52px; max-width: 52px; border-radius: 26px; overflow: hidden; background: #3a2a24; color: #f4ecd4; border: 2px solid var(--border); box-shadow: 0 4px 14px rgba(0,0,0,.35); opacity: 0; transform: scale(.4); transition: transform .35s cubic-bezier(.3,1.7,.5,1), opacity .2s, max-width .5s cubic-bezier(.2,.9,.3,1.1) .3s; }
   #ach.show { opacity: 1; transform: none; max-width: min(520px, calc(100% - 190px)); } /* never under the minimap */
@@ -65,8 +71,8 @@
   #ach small { display: block; font-size: 10px; color: #d2c69d; }
   #ach span { font-size: 12.5px; font-weight: 700; }
   /* HUD items enter with a stretch and a bounce */
-  .pop { animation: popBounce .7s ease-out both; } /* uniform scale, growing out of the item's corner */
-  @keyframes popBounce { 0% { transform: scale(0); opacity: 0; } 40% { transform: scale(1.18); opacity: 1; } 60% { transform: scale(.92); } 80% { transform: scale(1.04); } 100% { transform: none; } }
+  .pop { animation: popBounce .85s ease-out both; } /* uniform scale, growing out of the item's corner */
+  @keyframes popBounce { 0% { transform: scale(0); opacity: 0; } 22% { transform: scale(.6); opacity: 1; } 36% { transform: scale(.5, .42); } 60% { transform: scale(1.2); } 78% { transform: scale(.95); } 90% { transform: scale(1.03); } 100% { transform: none; } } /* appear, crouch (anticipation), burst, settle */
   #minimap.pop { transform-origin: top left; } #speed.pop { transform-origin: bottom right; }
   /* "New addition!" bubble above the crawler */
   #newAdd { display: none; transform: translate(-50%, -100%); padding: 7px 14px 8px; border-radius: 16px; background: #2f6fb5; border: 2px solid #1d4a7d; text-align: center; white-space: nowrap; box-shadow: 0 3px 10px rgba(0,0,0,.3); }
@@ -91,7 +97,7 @@
   @media (max-width: 520px) {
     #minimap { width: 104px; height: 132px; }
     #ach.show { max-width: calc(100% - 134px); } #ach .txt { min-width: 0; } #ach span { font-size: 11px; }
-    #speed svg { width: 132px; height: 72px; } #frags { width: 66px; } #frags svg { width: 58px; height: 58px; }
+    #speed svg { width: 132px; height: 72px; } #frags { width: 70px; } #frags svg { width: 70px; height: 70px; } #fragCount { font-size: 12px; }
     .panel { font-size: 12px; padding: 14px; } #toast { white-space: normal; text-align: center; max-width: 80%; }
   }
   #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; }
@@ -101,7 +107,7 @@
 <canvas id="game" tabindex="0"></canvas>
 <div id="loading">Building the valley…</div>
 
-<canvas id="minimap" class="hud chip" width="150" height="190"></canvas>
+<canvas id="minimap" class="hud" width="150" height="190"></canvas>
 <div id="speed" class="hud">
   <svg viewBox="0 0 120 66" aria-label="Speed">
     <path class="disc" d="M 2 65 A 58 58 0 0 1 118 65 Z"/>
@@ -116,15 +122,16 @@
 <div id="newAdd" class="hud"><b>New addition!</b><span id="newName"></span></div>
 <div id="ach" class="hud"><div class="badge"><svg viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round"><path d="M 30 18 H 60 L 72 30 V 82 H 30 Z"/><path d="M 40 46 H 62 M 40 58 H 62 M 40 70 H 54" stroke-linecap="round"/></svg></div><div class="txt"><small id="achTop"></small><span id="achMsg"></span></div></div>
 <!-- CV fragments: a document with four quarter circles around it, one per fragment -->
-<div id="frags" class="hud chip">
+<div id="frags" class="hud">
   <svg viewBox="0 0 100 100" aria-label="CV fragments found">
-    <path id="arc0" d="M 50 8 A 42 42 0 0 1 92 50" fill="none" stroke-width="7" stroke-linecap="round"/>
-    <path id="arc1" d="M 92 50 A 42 42 0 0 1 50 92" fill="none" stroke-width="7" stroke-linecap="round"/>
-    <path id="arc2" d="M 50 92 A 42 42 0 0 1 8 50" fill="none" stroke-width="7" stroke-linecap="round"/>
-    <path id="arc3" d="M 8 50 A 42 42 0 0 1 50 8" fill="none" stroke-width="7" stroke-linecap="round"/>
-    <g id="docIcon" fill="none" stroke-width="4" stroke-linejoin="round">
-      <path d="M 36 26 H 57 L 66 35 V 74 H 36 Z"/><path d="M 57 26 V 35 H 66"/>
-      <path d="M 43 46 H 59 M 43 54 H 59 M 43 62 H 53" stroke-linecap="round"/>
+    <circle class="disc" cx="50" cy="50" r="48.5"/>
+    <path id="arc0" class="q" d="M 56.24 6.44 A 44 44 0 0 1 93.56 43.76 L 86.5 44.26 A 33.15 33.15 0 0 0 55.74 13.5 Z"/>
+    <path id="arc1" class="q" d="M 94 49.4 A 44 44 0 0 1 56.71 93.48 L 55.74 79.63 A 33.15 33.15 0 0 0 86.5 48.88 Z"/>
+    <path id="arc2" class="q" d="M 50.12 94 A 44 44 0 0 1 6 49.88 L 20.37 48.88 A 33.15 33.15 0 0 0 51.12 79.63 Z"/>
+    <path id="arc3" class="q" d="M 6.52 43.29 A 44 44 0 0 1 50.6 6 L 51.12 13.5 A 33.15 33.15 0 0 0 20.37 44.26 Z"/>
+    <g id="docIcon" fill="none" stroke-width="4" stroke-linejoin="round" transform="translate(3.43 -3.43)">
+      <path d="M 37 28 H 56 L 64 36 V 72 H 37 Z"/><path d="M 56 28 V 36 H 64"/>
+      <path d="M 43 46 H 58 M 43 54 H 58 M 43 62 H 52" stroke-linecap="round"/>
     </g>
   </svg>
   <div id="fragCount">0 / 4</div>
@@ -154,6 +161,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=41"></script>
+<script type="module" src="./game.js?v=43"></script>
 </body>
 </html>
