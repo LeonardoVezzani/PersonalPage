@@ -817,7 +817,7 @@ function makeBird(x, y, z, dx, dz, takeoff = false) {
   const mat = birdMats[Math.random() * 4 | 0], g = new THREE.Group(), add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
   add(birdGeo.body, mat, 0, 0, 0); add(birdGeo.head, mat, 0, 0.18, 0.5); add(birdGeo.beak, beakMat, 0, 0.16, 0.85); add(birdGeo.tail, mat, 0, 0.05, -0.65);
   const wl = add(birdGeo.wing, mat, 0.22, 0.12, 0.05), wr = add(birdGeo.wing, mat, -0.22, 0.12, 0.05); wr.scale.x = -1;
-  const sc = 0.9 + Math.random() * 0.4; g.scale.setScalar(sc); g.position.set(x, y, z); scene.add(g);
+  const sc = (0.9 + Math.random() * 0.4) * 0.6; g.scale.setScalar(sc); // small birds g.position.set(x, y, z); scene.add(g);
   const l = Math.hypot(dx, dz) || 1;
   birds.push({ g, wl, wr, dx: dx / l, dz: dz / l, speed: 6 + Math.random() * 2.5, vy: takeoff ? 7 : 0, phase: 'flap', pt: takeoff ? 1.4 : 0.4 + Math.random() * 0.5, wing: Math.random() * 6, rate: 13 + Math.random() * 4,
     alt: 9 + Math.random() * 6, life: 0, turn: (Math.random() - 0.5) * 0.25 });
@@ -877,7 +877,7 @@ function updateTrees(dt) {
     let th = t.th || 0, om = t.om || 0;
     if (d >= R) t.pressed = false; else t.rustled = false; // free again: the next contact knocks
     if (d < R) { // pressed: bend away from the crawler, mostly along its direction of travel
-      if (!t.pressed && sp > 2) { treeHit(sp / VMAX); leaves(sp / VMAX); if (Math.random() < 0.3 && birds.length < 6) flushBird(t); } t.pressed = true;
+      if (!t.pressed && sp > 2) { treeHit(sp / VMAX); leaves(sp / VMAX); if (Math.random() < 0.15 && birds.length < 4) flushBird(t); } t.pressed = true;
       let bx = dx / (d || 1) * 0.6, bz = dz / (d || 1) * 0.6; if (sp > 1) { bx += v.x / sp; bz += v.z / sp; } const bl = Math.hypot(bx, bz) || 1;
       t.bx = bx / bl; t.bz = bz / bl;
       const k = 1 - d / R, target = TREE_MAX * Math.min(1, k * k * (3 - 2 * k) * 1.6), nth = th + (target - th) * Math.min(1, dt * 14);
@@ -921,7 +921,7 @@ function launchHouses(t) { // after the physics step: take the house out of the 
     const [x1, y1, z1, ux, uz] = spot;
     flying.push({ h, t0: t, x0: h.x, y0: h.y, z0: h.z, x1, y1, z1, ax: uz, az: -ux, spin: (Math.random() < 0.5 ? -1 : 1) * Math.PI * (0.5 + Math.random()) });
     chassisBody.velocity.copy(v).scale(0.85, chassisBody.velocity); // the crawler ploughs on
-    play('honk'); comicBang(h, h.x - ux * 1.6 * h.sc, h.y + 2.2, h.z - uz * 1.6 * h.sc, 'KABOOM!');
+    comicBang(h, h.x - ux * 1.6 * h.sc, h.y + 2.2, h.z - uz * 1.6 * h.sc, 'KABOOM!');
   }
   houseHitQueue = [];
 }
@@ -1263,13 +1263,12 @@ function collect(p) {
     }, 3000);
     return;
   }
-  pendingUnlock = { n, at: clock.elapsedTime + ACH_SECS }; // it arrives once the banner has gone and the crawler is moving
+  unlockQueue.push({ n, at: clock.elapsedTime + ACH_SECS }); // it arrives once the banner has gone and the crawler is moving; queued, so two pages found close together both unlock
 }
 const ACH_SECS = 4.2, NEW_NAMES = ['Map and speedometer', 'Pedestrian highlight', 'Directions'];
-let pendingUnlock = null;
+const unlockQueue = []; // unlocks waiting their turn, one at a time
 function updateUnlocks(t) {
-  if (!pendingUnlock) return;
-  const u = pendingUnlock;
+  const u = unlockQueue[0]; if (!u) return;
   if (!u.bubble && t >= u.at + 0.3) { u.bubble = true; newAddition(NEW_NAMES[u.n - 1]); } // 0.3 s after the banner has gone
   if (!u.done && u.bubble && chassisBody.velocity.length() > 1) { // …and the unlock itself once the crawler moves
     u.done = t;
@@ -1277,7 +1276,7 @@ function updateUnlocks(t) {
     if (u.n === 2) showBoxes(t);
     if (u.n === 3) { carpetOn = true; carpetT0 = t; pickups[3].group.visible = true; }
   }
-  if (u.done && t >= u.done + 0.5) { $('newAdd').style.display = 'none'; newShown = false; pendingUnlock = null; } // the bubble stays 0.5 s more
+  if (u.done && t >= u.done + 0.5) { $('newAdd').style.display = 'none'; newShown = false; unlockQueue.shift(); if (unlockQueue[0]) unlockQueue[0].at = Math.max(unlockQueue[0].at, t + 0.6); } // the bubble stays 0.5 s more; the next one follows
 }
 let newShown = false; // the blue bubble above the crawler: "New addition!" and what is about to arrive
 function newAddition(name) { $('newName').textContent = name; newShown = true; popIn($('newAdd')); }
@@ -1485,4 +1484,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, get birds() { return birds.length; }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, unlockQueue, get birds() { return birds.length; }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
