@@ -18,10 +18,16 @@
   #fragCount { text-align: center; font-size: 10px; color: var(--muted); }
   #speed { right: 10px; bottom: 8px; display: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
   #speed svg { width: 170px; height: 93px; display: block; overflow: visible; }
-  #speed .disc { fill: var(--bg); stroke: var(--border); stroke-width: 2; }
-  #speed text { font: 700 7.5px "JetBrains Mono", ui-monospace, monospace; fill: var(--fg); }
-  #speed .arc { stroke: var(--subtle); } #speed .hot { stroke: var(--red); } #speed .tick { stroke: var(--muted); }
-  #needle line { stroke: var(--red); } #needle circle { fill: var(--fg); }
+  /* speedometer in the crawler's colours (cream, mustard, anthracite) with the dog's orange needle */
+  #speed .disc { fill: #3a2a24; stroke: #6b5444; stroke-width: 2.5; }
+  #speed text { font: 800 7px "JetBrains Mono", ui-monospace, monospace; fill: #d2c69d; stroke: #3a2a24; stroke-width: 2.4px; stroke-linejoin: round; paint-order: stroke; }
+  #speed .tick { stroke: #3a2a24; } /* notches cut into the band */
+  #needle line { stroke: #e98a3c; } #needle circle { fill: #d2c69d; stroke: #e98a3c; stroke-width: 1.5; }
+  #speed #superTxt text { fill: #e06b55; }
+  #superTxt { transform-box: fill-box; transform-origin: 50% 60%; }
+  /* reaching SUPER FAST!: crouch (anticipation), burst out, settle with a wobble */
+  #superTxt.boom { animation: superBoom .75s cubic-bezier(.3,.6,.4,1) both; }
+  @keyframes superBoom { 0% { transform: scale(1); } 18% { transform: scale(.72, .66); } 42% { transform: scale(1.9) rotate(-6deg); } 60% { transform: scale(.88) rotate(3deg); } 78% { transform: scale(1.12) rotate(-1deg); } 100% { transform: scale(1); } }
   #minimap { left: 10px; top: 10px; width: 150px; height: 190px; display: none; }
   #toast { left: 50%; top: 18%; transform: translateX(-50%); font-size: 13px; font-weight: 700; padding: 7px 12px; opacity: 0; transition: opacity .3s; white-space: nowrap; }
   #finale, #start { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.3); }
@@ -95,11 +101,11 @@
 <div id="speed" class="hud">
   <svg viewBox="0 0 120 66" aria-label="Speed">
     <path class="disc" d="M 2 65 A 58 58 0 0 1 118 65 Z"/>
-    <path class="arc" d="M 20 65 A 40 40 0 0 1 100 65" fill="none" stroke-width="6"/>
-    <path class="hot" d="M 94.6 45 A 40 40 0 0 1 100 65" fill="none" stroke-width="6"/>
-    <g class="tick" stroke-width="2"><line x1="28.8" y1="47" x2="22" y2="43"/><line x1="60" y1="29" x2="60" y2="21"/><line x1="91.2" y1="47" x2="98" y2="43"/></g>
-    <text x="17" y="38" text-anchor="middle">slow</text><text x="60" y="15" text-anchor="middle">fast</text><text x="103" y="33" text-anchor="middle">super</text><text x="103" y="41" text-anchor="middle">fast</text>
-    <g id="needle" transform="rotate(-90 60 65)"><line x1="60" y1="65" x2="60" y2="31" stroke-width="3" stroke-linecap="round"/><circle cx="60" cy="65" r="5"/></g>
+    <defs><linearGradient id="speedGrad" gradientUnits="userSpaceOnUse" x1="17" y1="0" x2="103" y2="0"><stop offset="0" stop-color="#f4ecd4"/><stop offset=".2" stop-color="#f4ecd4"/><stop offset=".5" stop-color="#e3b341"/><stop offset=".74" stop-color="#e08a3c"/><stop offset=".86" stop-color="#c4574a"/><stop offset="1" stop-color="#c4574a"/></linearGradient></defs>
+    <path class="band" d="M 17 65 A 43 43 0 0 1 103 65 L 87.29 65 A 32.14 32.14 0 0 0 23 65 Z" fill="url(#speedGrad)"/>
+    <g class="tick" stroke-width="1.6"><line x1="28.17" y1="49.43" x2="20.74" y2="45.14"/><line x1="55.14" y1="33.86" x2="55.14" y2="21.27"/><line x1="82.12" y1="49.43" x2="96.83" y2="40.93"/></g>
+    <text x="20" y="39" text-anchor="middle">SLOW</text><text x="60" y="15" text-anchor="middle">FAST</text><g id="superTxt"><text x="101" y="33" text-anchor="middle">SUPER</text><text x="101" y="40.5" text-anchor="middle">FAST!</text></g>
+    <g id="needle" transform="rotate(-90 55.14 65)"><line x1="55.14" y1="65" x2="55.14" y2="36.36" stroke-width="3" stroke-linecap="round"/><circle cx="55.14" cy="65" r="5"/></g>
   </svg>
 </div>
 <div id="toast" class="hud chip"></div>
@@ -144,6 +150,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=31"></script>
+<script type="module" src="./game.js?v=37"></script>
 </body>
 </html>
