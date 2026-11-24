@@ -652,7 +652,7 @@ function updateWalkers(dt, t) {
       w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
     }
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
-    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person', 0.7); comicHit(w, cp); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person'); comicHit(w, cp); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
     if (w.scared > 0) { w.scared -= dt; speed *= 3; }
     else if (dc < 11) { // step aside when the crawler gets close
@@ -732,7 +732,8 @@ function tone(f0, f1, dur, gain, type = 'sine', when = 0) {
 const chime = () => { tone(784, 784, 0.22, 0.16, 'triangle'); tone(1175, 1175, 0.45, 0.16, 'triangle', 0.14); }; // pum-pim
 const bubblePop = () => tone(380 + Math.random() * 220, 1500 + Math.random() * 700, 0.07, 0.2);
 const ndc = new THREE.Vector3(), onCamera = p => { ndc.copy(p).project(camera); return Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1; };
-function play(name, volume = 0.8) { try { const a = SFX[name].cloneNode(); a.volume = volume; a.play().catch(() => {}); } catch (e) {} }
+const SFX_VOL = 0.75; // the files are all normalised to the same loudness (-16 LUFS), so they all play at one volume
+function play(name) { try { const a = SFX[name].cloneNode(); a.volume = SFX_VOL; a.play().catch(() => {}); } catch (e) {} }
 const shouts = []; // comic "!" lines
 const shoutMats = { car: new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }), dog: new THREE.MeshBasicMaterial({ color: 0xff8a1f, depthTest: false }) }; // white for the horn, orange for the dog
 function shout(origin, dir, who = 'car') { const shoutMat = shoutMats[who];
@@ -750,7 +751,7 @@ function honk() {
     play('bark');
     shout(dog.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 1.6, 0)), fwdDir, 'dog'); toast('Woof! Woof!');
   } else {
-    play('honk', 0.6);
+    play('honk');
     shout(car.position.clone().addScaledVector(fwdDir, 4.6 * SIZE_K).add(new THREE.Vector3(0, 1.2 * SIZE_K, 0)), fwdDir); toast('Beep beep!');
   }
   for (const w of walkers) { // everyone nearby runs off
@@ -779,7 +780,7 @@ function confetti() {
     conf.setColorAt(i, c.set(cols[i % cols.length]));
   });
   conf.instanceColor.needsUpdate = true;
-  play('fanfare', 0.8); // victory
+  play('fanfare'); // victory
 }
 const cM = new THREE.Matrix4(), cQ = new THREE.Quaternion(), cE = new THREE.Euler(), cS = new THREE.Vector3(1, 1, 1), cP = new THREE.Vector3();
 function updateConfetti(dt) {
@@ -1009,6 +1010,42 @@ const ZF = new CANNON.Vec3(0, 0, 1), zfW = new CANNON.Vec3(), SUN_OFF = new THRE
 const speedEl = $('speed'), needleEl = $('needle'); let speedShown = -999, needleJ = 0, lastCarY = 0;
 const superEl = $('superTxt'), shakeEl = $('superShake'); let superOn = false; // the SUPER FAST! label bursts when the needle enters the red
 
+// tyre tracks: two strips behind the rear wheels, laid on the ground in short segments that fade out in a few seconds
+const TRACK_LIFE = 4.5, TRACK_N = 600, TRACK_W = 0.55 * SIZE_K / 0.6, TRACK_STEP = 0.45, TRACK_ALPHA = 0.42;
+const trackGeo = new THREE.BufferGeometry(), trackPos = new Float32Array(2 * TRACK_N * 6 * 3), trackCol = new Float32Array(2 * TRACK_N * 6 * 4);
+{ const c = new THREE.Color(0x2e2217); for (let i = 0; i < trackCol.length; i += 4) trackCol.set([c.r, c.g, c.b, 0], i); }
+trackGeo.setAttribute('position', new THREE.BufferAttribute(trackPos, 3)); trackGeo.setAttribute('color', new THREE.BufferAttribute(trackCol, 4));
+const tracks = new THREE.Mesh(trackGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+tracks.frustumCulled = false; tracks.renderOrder = 2; scene.add(tracks);
+const trackBorn = new Float32Array(2 * TRACK_N).fill(-1e9), trackHead = [0, 0];
+const trackLast = [null, null]; // per wheel: the last point laid and its two edges
+function layTrack(w, x, z, t) {
+  const y = groundAt(x, z);
+  if (y < WATER_Y + 0.05) { trackLast[w] = null; return; } // no tracks in the water
+  const last = trackLast[w];
+  if (!last) { trackLast[w] = { x, z, y, l: null, r: null }; return; }
+  const dx = x - last.x, dz = z - last.z, d = Math.hypot(dx, dz);
+  if (d < TRACK_STEP) return;
+  if (d > 3) { trackLast[w] = { x, z, y, l: null, r: null }; return; } // a jump: start a new strip
+  const nx = -dz / d * TRACK_W / 2, nz = dx / d * TRACK_W / 2, h = 0.07;
+  const l = [x + nx, y + h, z + nz], r = [x - nx, y + h, z - nz];
+  const pl = last.l || [last.x + nx, last.y + h, last.z + nz], pr = last.r || [last.x - nx, last.y + h, last.z - nz];
+  const seg = w * TRACK_N + trackHead[w]; trackHead[w] = (trackHead[w] + 1) % TRACK_N;
+  trackPos.set([...pl, ...pr, ...l, ...pr, ...r, ...l], seg * 18); trackBorn[seg] = t;
+  trackLast[w] = { x, z, y, l, r };
+  trackGeo.attributes.position.needsUpdate = true;
+}
+function updateTracks(t) {
+  const p = car.position, c = Math.cos(carYaw), sn = Math.sin(carYaw);
+  [AX, -AX].forEach((lx, w) => layTrack(w, p.x + lx * c - AZ * sn, p.z - lx * sn - AZ * c, t)); // the two rear wheels
+  for (let i = 0; i < 2 * TRACK_N; i++) {
+    const k = (t - trackBorn[i]) / TRACK_LIFE, a = k >= 1 ? 0 : TRACK_ALPHA * (1 - k * k); // stays dark, then fades quicker at the end
+    const o = i * 24 + 3; if (trackCol[o] === a) continue;
+    for (let v = 0; v < 6; v++) trackCol[o + v * 4] = a;
+  }
+  trackGeo.attributes.color.needsUpdate = true;
+}
+
 let onScreen = true; // skip the work while the game is scrolled out of view (or its tab is hidden)
 new IntersectionObserver(e => { onScreen = e[0].isIntersecting; }).observe(canvas);
 function frame() {
@@ -1017,7 +1054,7 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   step(dt);
   // sync visuals
-  syncCar();
+  syncCar(); updateTracks(t);
   wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(ZF, zfW)) * dt / WHEEL_R;
   for (const a of carAxles) a.rotation.x = wheelSpin;
   // camera: fixed isometric angle, follows the car smoothly
