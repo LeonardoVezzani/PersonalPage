@@ -540,7 +540,6 @@ const walkers = [];
   const BODIES = { // the torso: [geometry, its height]
     cylinder: () => new THREE.CylinderGeometry(0.42, 0.5, 1.3, 8),
     coneUp: () => new THREE.CylinderGeometry(0.08, 0.66, 1.4, 10),   // apex up
-    coneDown: () => new THREE.CylinderGeometry(0.68, 0.1, 1.4, 10),  // apex down: broad shoulders
     prism3: () => new THREE.CylinderGeometry(0.62, 0.62, 1.3, 3),
     prism4: () => new THREE.BoxGeometry(0.85, 1.3, 0.62),
     prism6: () => new THREE.CylinderGeometry(0.5, 0.5, 1.3, 6),
