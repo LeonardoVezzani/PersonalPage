@@ -827,7 +827,7 @@ function makeBird(x, y, z, dx, dz, takeoff = false) {
   const mat = birdMats[Math.random() * 4 | 0], g = new THREE.Group(), add = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; g.add(o); return o; };
   add(birdGeo.body, mat, 0, 0, 0); add(birdGeo.head, mat, 0, 0.18, 0.5); add(birdGeo.beak, beakMat, 0, 0.16, 0.85); add(birdGeo.tail, mat, 0, 0.05, -0.65);
   const wl = add(birdGeo.wing, mat, 0.22, 0.12, 0.05), wr = add(birdGeo.wing, mat, -0.22, 0.12, 0.05); wr.scale.x = -1;
-  const sc = (0.9 + Math.random() * 0.4) * 0.6; g.scale.setScalar(sc); // small birds g.position.set(x, y, z); scene.add(g);
+  const sc = (0.9 + Math.random() * 0.4) * 0.6; g.scale.setScalar(sc); g.position.set(x, y, z); scene.add(g); // small birds
   const l = Math.hypot(dx, dz) || 1;
   birds.push({ g, wl, wr, dx: dx / l, dz: dz / l, speed: 6 + Math.random() * 2.5, vy: takeoff ? 7 : 0, phase: 'flap', pt: takeoff ? 1.4 : 0.4 + Math.random() * 0.5, wing: Math.random() * 6, rate: 13 + Math.random() * 4,
     alt: 9 + Math.random() * 6, life: 0, turn: (Math.random() - 0.5) * 0.25 });
@@ -836,7 +836,7 @@ function spawnFlock() { // from beyond the view, across the crawler, a little hi
   const cp = car.position, a = Math.random() * Math.PI * 2, n = Math.random() < 0.6 ? 1 : 2, dx = Math.cos(a), dz = Math.sin(a), off = (Math.random() - 0.5) * 16;
   for (let i = 0; i < n; i++) {
     const x = cp.x - dx * 55 - dz * off + (Math.random() - 0.5) * 4 - dx * i * 3, z = cp.z - dz * 55 + dx * off + (Math.random() - 0.5) * 4 - dz * i * 3;
-    makeBird(x, groundAt(x, z) + 10 + Math.random() * 4, z, dx, dz);
+    makeBird(x, Math.max(groundAt(x, z), groundAt(cp.x, cp.z), 0) + 10 + Math.random() * 4, z, dx, dz);
   }
 }
 function flushBird(t) { // out of a tree that has just been hit: straight up and away from the crawler
@@ -847,12 +847,13 @@ function updateBirds(dt) {
   nextFlock -= dt; if (nextFlock <= 0) { spawnFlock(); nextFlock = 25 + Math.random() * 25; }
   for (let i = birds.length - 1; i >= 0; i--) {
     const b = birds[i], p = b.g.position; b.pt -= dt; b.life += dt;
-    if (b.pt <= 0) { if (b.phase === 'flap') { b.phase = 'glide'; b.pt = 0.25 + Math.random() * 0.45; } else { b.phase = 'flap'; b.pt = 0.35 + Math.random() * 0.6; b.turn = (Math.random() - 0.5) * 0.35; } }
-    const floor = groundAt(p.x, p.z) + b.alt; let f;
-    if (b.phase === 'flap') { b.wing += dt * b.rate; f = Math.sin(b.wing); b.vy += ((p.y < floor ? 3.5 : 1.2) - b.vy) * Math.min(1, dt * 3); } // up
-    else { f = 0.15; b.vy += (-2.6 - b.vy) * Math.min(1, dt * 3); } // wings folded, dipping
+    const ground = groundAt(p.x, p.z), err = ground + b.alt - p.y; // how far below its cruising height
+    if (b.pt <= 0) { if (b.phase === 'flap' && err < 2) { b.phase = 'glide'; b.pt = 0.25 + Math.random() * 0.45; } else { b.phase = 'flap'; b.pt = 0.35 + Math.random() * 0.6; b.turn = (Math.random() - 0.5) * 0.35; } } // no gliding while too low
+    let f;
+    if (b.phase === 'flap') { b.wing += dt * b.rate; f = Math.sin(b.wing); b.vy += (Math.max(-1, Math.min(7, 1.6 + err * 0.9)) - b.vy) * Math.min(1, dt * 3); } // up, harder the lower it is
+    else { f = 0.15; b.vy += (-1.8 - b.vy) * Math.min(1, dt * 3); } // wings folded, dipping
     const c = Math.cos(b.turn * dt), sn = Math.sin(b.turn * dt), ndx = b.dx * c - b.dz * sn; b.dz = b.dx * sn + b.dz * c; b.dx = ndx; // a lazy curve
-    p.x += b.dx * b.speed * dt; p.z += b.dz * b.speed * dt; p.y += b.vy * dt;
+    p.x += b.dx * b.speed * dt; p.z += b.dz * b.speed * dt; p.y = Math.max(groundAt(p.x, p.z) + 1.5, p.y + b.vy * dt); // never into the ground
     b.g.rotation.set(-b.vy * 0.05, Math.atan2(b.dx, b.dz), -b.turn * 1.5, 'YXZ');
     b.wl.rotation.z = f * 0.9; b.wr.rotation.z = -f * 0.9;
     if (b.life > 30 || Math.hypot(p.x - car.position.x, p.z - car.position.z) > 90) { scene.remove(b.g); birds.splice(i, 1); }
@@ -1494,4 +1495,4 @@ window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, unlockQueue, carpetPath, get birds() { return birds.length; }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, unlockQueue, carpetPath, get birds() { return birds.length; }, get birdList() { return birds.map(b => ({ x: b.g.position.x, y: b.g.position.y, z: b.g.position.z, ground: groundAt(b.g.position.x, b.g.position.z) })); }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
