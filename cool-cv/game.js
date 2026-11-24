@@ -543,6 +543,7 @@ const walkers = [];
     prism3: () => new THREE.CylinderGeometry(0.62, 0.62, 1.3, 3),
     prism4: () => new THREE.BoxGeometry(0.85, 1.3, 0.62),
     prism6: () => new THREE.CylinderGeometry(0.5, 0.5, 1.3, 6),
+    spheres: () => mergeGeometries([new THREE.SphereGeometry(0.5, 12, 9).translate(0, -0.15, 0), new THREE.SphereGeometry(0.38, 12, 9).translate(0, 0.27, 0)]), // two stacked balls
   };
   const SHAPES = Object.keys(BODIES);
   function person(shirt, skin, shape, legs) {

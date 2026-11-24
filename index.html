@@ -776,7 +776,7 @@
       function openGame() {
         sections().forEach(s => { s.classList.add('hidden'); s.style.opacity = ''; });
         panel.classList.remove('hidden');
-        frame.src = 'cool-cv/index.html?v=39&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        frame.src = 'cool-cv/index.html?v=40&embedded=1&theme=' + (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => frame.focus(), 400);
       }
