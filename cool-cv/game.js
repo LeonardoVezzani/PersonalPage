@@ -988,9 +988,20 @@ function settleOnWheels() { // height, pitch and roll from the ground under the 
 }
 world.addEventListener("preStep", () => control(world.dt));
 
+// fixed 60 Hz physics; the crawler is drawn interpolated between the last two steps, so it glides on any screen (120/144 Hz, uneven frames)
+const STEP = 1 / 60, prevPos = chassisBody.position.clone(), prevQuat = chassisBody.quaternion.clone(), qA = new THREE.Quaternion(), qB = new THREE.Quaternion();
+let stepAcc = 0;
 function step(dt) {
-  world.step(1 / 60, dt, 4);
-  settleOnWheels();
+  stepAcc = Math.min(stepAcc + dt, STEP * 4);
+  while (stepAcc >= STEP) {
+    prevPos.copy(chassisBody.position); prevQuat.copy(chassisBody.quaternion);
+    world.step(STEP); settleOnWheels(); stepAcc -= STEP;
+  }
+}
+function syncCar() { // position and orientation a fraction of the way from the previous step to the current one
+  const k = stepAcc / STEP, p = chassisBody.position, q = chassisBody.quaternion;
+  car.position.set(prevPos.x + (p.x - prevPos.x) * k, prevPos.y + (p.y - prevPos.y) * k, prevPos.z + (p.z - prevPos.z) * k);
+  qA.set(prevQuat.x, prevQuat.y, prevQuat.z, prevQuat.w); qB.set(q.x, q.y, q.z, q.w); car.quaternion.slerpQuaternions(qA, qB, k);
 }
 let wheelSpin = 0;
 const ZF = new CANNON.Vec3(0, 0, 1), zfW = new CANNON.Vec3(), SUN_OFF = new THREE.Vector3(60, 110, 40), fwdV = new THREE.Vector3(), seatW = new THREE.Vector3(); // reused every frame
@@ -1005,7 +1016,7 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   step(dt);
   // sync visuals
-  car.position.copy(chassisBody.position); car.quaternion.copy(chassisBody.quaternion);
+  syncCar();
   wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(ZF, zfW)) * dt / WHEEL_R;
   for (const a of carAxles) a.rotation.x = wheelSpin;
   // camera: fixed isometric angle, follows the car smoothly
