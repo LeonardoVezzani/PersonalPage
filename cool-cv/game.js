@@ -658,7 +658,7 @@ function updateWalkers(dt, t) {
       w.knocked -= dt; w.g.rotation.z = Math.min(1, w.knocked) * Math.PI / 2; if (w.knocked <= 0) w.g.rotation.z = 0; continue;
     }
     const dc = Math.hypot(p.x - cp.x, p.z - cp.z);
-    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; play(w.kind === 'sheep' ? 'sheep' : 'person'); comicHit(w, cp); slap(0.8); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
+    if (dc < 3.6 * SIZE_K + 0.8) { w.knocked = 1.8; if (w.kind === 'sheep') play('sheep'); else personVoice(); comicHit(w, cp); slap(0.8); chassisBody.velocity.scale(0.3, chassisBody.velocity); continue; }
     let speed = w.speed;
     if (w.scared > 0) { w.scared -= dt; speed *= 3; }
     else if (dc < 11) { // step aside when the crawler gets close
@@ -933,6 +933,40 @@ async function slap(strength = 1, heavy = false) { // thump! never quite the sam
   src.connect(lp).connect(g).connect(ctx.destination); src.start(ctx.currentTime, Math.random() * 0.015);
 }
 let lastTreeHit = 0;
+// people knocked over: one of four fragments of the voice, varied in pitch, speed and tone
+const VOICES = 4; for (let i = 1; i <= VOICES; i++) bufFetch['person' + i] = fetch(`assets/sfx/person${i}.mp3`).then(r => r.arrayBuffer()).catch(() => null);
+let lastVoiceN = 0;
+async function personVoice() {
+  let n; do n = 1 + (Math.random() * VOICES | 0); while (n === lastVoiceN); lastVoiceN = n;
+  const ctx = audioCtx(), buf = await buffer('person' + n); if (!ctx || !buf) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  src.buffer = buf; src.playbackRate.value = 0.82 + Math.random() * 0.45; // deeper and slower, or higher and quicker
+  f.type = 'peaking'; f.frequency.value = 600 + Math.random() * 2400; f.Q.value = 1 + Math.random() * 2; f.gain.value = (Math.random() - 0.5) * 12; // a different 'mouth' each time
+  g.gain.value = SFX_VOL * (0.7 + Math.random() * 0.3);
+  src.connect(f).connect(g).connect(ctx.destination); src.start();
+}
+// the ground under the wheels: grains of water, grass or snow, more of them the faster you go, very low (a little under the engine)
+const SURF_SND = { water: 'surf_water', grass: 'surf_grass', earth: 'surf_grass', sand: 'surf_grass', snow: 'surf_snow' }; // rock: tyres only
+const SURF_GAIN = { surf_water: 1, surf_grass: 1.1, surf_snow: 1.5 }; // evens out the three recordings
+for (const f of new Set(Object.values(SURF_SND))) bufFetch[f] = fetch(`assets/sfx/${f}.mp3`).then(r => r.arrayBuffer()).catch(() => null);
+const SURF_VOL = 0.13; let grainAt = 0;
+async function surfaceGrain(name, k) {
+  const ctx = audioCtx(), buf = await buffer(name); if (!ctx || !buf) return;
+  const len = 0.25 + Math.random() * 0.2, at = Math.random() * Math.max(0, buf.duration - len), t0 = ctx.currentTime, fade = 0.06;
+  const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+  src.buffer = buf; src.playbackRate.value = 0.8 + Math.random() * 0.4; // random pitch
+  f.type = 'bandpass'; f.frequency.value = 500 + Math.random() * 3000; f.Q.value = 0.4 + Math.random() * 0.8; // random colour
+  const v = SURF_VOL * SURF_GAIN[name] * (0.4 + 0.6 * k) * (0.7 + Math.random() * 0.3);
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(v, t0 + fade); g.gain.setValueAtTime(v, t0 + len - fade); g.gain.linearRampToValueAtTime(0, t0 + len);
+  src.connect(f).connect(g).connect(ctx.destination); src.start(t0, at, len + 0.05);
+}
+function updateSurfaceSound(t) {
+  if (!started || document.hidden || !onScreen) return;
+  const v = chassisBody.velocity, sp = Math.hypot(v.x, v.z); if (sp < 1.5) return;
+  const name = SURF_SND[surfaceAt(car.position.x, car.position.z)]; if (!name) return;
+  const k = Math.min(1.5, sp / VMAX) / 1.5;
+  if (t >= grainAt) { surfaceGrain(name, k); grainAt = t + (0.32 - 0.18 * k) * (0.8 + Math.random() * 0.4); } // overlapping grains: a texture, never a loop
+}
 let lastLeaves = 0, lastLeavesN = 0;
 async function leaves(strength = 1) { // a rustle of the branches: one of the six cuts, never the same one twice in a row, varied
   const now = performance.now(); if (now - lastLeaves < 140) return; lastLeaves = now;
@@ -1315,7 +1349,7 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   step(dt);
   // sync visuals
-  syncCar(); updateTracks(t); updateEngine(chassisBody.velocity.length() / VMAX, !document.hidden);
+  syncCar(); updateTracks(t); updateEngine(chassisBody.velocity.length() / VMAX, !document.hidden); updateSurfaceSound(t);
   wheelSpin += chassisBody.velocity.dot(chassisBody.quaternion.vmult(ZF, zfW)) * dt / WHEEL_R;
   for (const a of carAxles) a.rotation.x = wheelSpin;
   // camera: fixed isometric angle, follows the car smoothly
