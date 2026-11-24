@@ -13,7 +13,7 @@
   html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
   .hud { position: absolute; pointer-events: none; }
   .chip { background: var(--bg); border: 2px solid var(--border); border-radius: 6px; color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  /* CV fragments: the speedometer's look. A dark badge, a ring that thickens towards the bottom right (6 → 6·φ²), the document at the centre of the inner circle */
+  /* CV fragments: the speedometer's look. A dark badge, a ring that thickens towards the bottom left (6 → 6·φ²), the document at the centre of the inner circle */
   #frags { left: 10px; bottom: 8px; width: 92px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
   #frags svg { width: 92px; height: 92px; display: block; overflow: visible; }
   #frags .disc { fill: #3a2a24; stroke: #6b5444; stroke-width: 2.5; }
@@ -125,11 +125,11 @@
 <div id="frags" class="hud">
   <svg viewBox="0 0 100 100" aria-label="CV fragments found">
     <circle class="disc" cx="50" cy="50" r="48.5"/>
-    <path id="arc0" class="q" d="M 49.4 6 A 44 44 0 0 1 93.48 43.29 L 79.63 44.26 A 33.15 33.15 0 0 0 48.88 13.5 Z"/>
-    <path id="arc1" class="q" d="M 94 49.88 A 44 44 0 0 1 49.88 94 L 48.88 79.63 A 33.15 33.15 0 0 0 79.63 48.88 Z"/>
-    <path id="arc2" class="q" d="M 43.29 93.48 A 44 44 0 0 1 6 49.4 L 13.5 48.88 A 33.15 33.15 0 0 0 44.26 79.63 Z"/>
-    <path id="arc3" class="q" d="M 6.44 43.76 A 44 44 0 0 1 43.76 6.44 L 44.26 13.5 A 33.15 33.15 0 0 0 13.5 44.26 Z"/>
-    <g id="docIcon" fill="none" stroke-width="4" stroke-linejoin="round" transform="translate(-3.43 -3.43)">
+    <path id="arc0" class="q" d="M 56.24 6.44 A 44 44 0 0 1 93.56 43.76 L 86.5 44.26 A 33.15 33.15 0 0 0 55.74 13.5 Z"/>
+    <path id="arc1" class="q" d="M 94 49.4 A 44 44 0 0 1 56.71 93.48 L 55.74 79.63 A 33.15 33.15 0 0 0 86.5 48.88 Z"/>
+    <path id="arc2" class="q" d="M 50.12 94 A 44 44 0 0 1 6 49.88 L 20.37 48.88 A 33.15 33.15 0 0 0 51.12 79.63 Z"/>
+    <path id="arc3" class="q" d="M 6.52 43.29 A 44 44 0 0 1 50.6 6 L 51.12 13.5 A 33.15 33.15 0 0 0 20.37 44.26 Z"/>
+    <g id="docIcon" fill="none" stroke-width="4" stroke-linejoin="round" transform="translate(3.43 -3.43)">
       <path d="M 37 28 H 56 L 64 36 V 72 H 37 Z"/><path d="M 56 28 V 36 H 64"/>
       <path d="M 43 46 H 58 M 43 54 H 58 M 43 62 H 52" stroke-linecap="round"/>
     </g>
