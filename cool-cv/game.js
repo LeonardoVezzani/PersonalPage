@@ -841,7 +841,14 @@ function toggleMode() {
 
 // ---------------------------------------------------------------- HUD
 const $ = id => document.getElementById(id);
-function updateFrags() { const got = pickups.filter(q => q.got).length; for (let i = 0; i < 4; i++) $('arc' + i).classList.toggle('got', i < got); $('fragCount').textContent = `${got} / 4`; }
+let fragsShown = 0;
+const reboom = el => { el.classList.remove('boom'); void el.getBoundingClientRect(); el.classList.add('boom'); };
+function updateFrags() { // the new quarter (and the counter) crouch and burst like SUPER FAST!; the whole badge does it for the last one
+  const got = pickups.filter(q => q.got).length;
+  for (let i = 0; i < 4; i++) { const q = $('arc' + i); q.classList.toggle('got', i < got); if (i >= fragsShown && i < got) reboom(q); }
+  $('fragCount').textContent = `${got} / 4`; if (got > fragsShown) { reboom($('fragCount')); if (got === 4) reboom($('frags').querySelector('svg')); }
+  fragsShown = got;
+}
 let toastTimer; function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 2600); }
 let achTimer; function achievement(top, msg) { // Xbox-style banner, top right
   const a = $('ach'); $('achTop').textContent = top; $('achMsg').textContent = msg;
