@@ -798,6 +798,48 @@ function updateExhaust(dt) {
     p.m.material.opacity = 0.7 * (1 - k) * (1 - k * 0.4);
   }
 }
+// little birds now and then: black, white, blue or red, crossing the screen slowly in bounding flight (a burst of wingbeats, rising; a glide with wings folded, dipping)
+const birdLayer = document.createElement('div'); birdLayer.className = 'hud'; birdLayer.style.inset = '0'; birdLayer.style.overflow = 'hidden';
+document.body.insertBefore(birdLayer, document.getElementById('minimap')); // under the HUD
+const BIRD_COLS = [['#1d1b1a', '#000'], ['#f4f1ea', '#8c8577'], ['#2f6fb5', '#1d4a7d'], ['#c8372d', '#7d1d17']];
+const birds = []; let nextFlock = 6 + Math.random() * 6;
+function birdSvg(col, edge) {
+  return `<svg viewBox="-16 -14 32 24" width="100%" height="100%" style="overflow:visible"><path class="w2" fill="${edge}"/><path d="M -9 1 L -14 -1 L -13 3 Z" fill="${col}" stroke="${edge}" stroke-width=".8"/>`
+    + `<ellipse cx="0" cy="1" rx="7.5" ry="3.6" fill="${col}" stroke="${edge}" stroke-width=".8"/><circle cx="7" cy="-1" r="3" fill="${col}" stroke="${edge}" stroke-width=".8"/>`
+    + `<path d="M 9.6 -1.6 L 13 -0.6 L 9.8 0.2 Z" fill="#e3b341"/><circle cx="7.9" cy="-1.8" r=".7" fill="#111"/><path class="w1" fill="${col}" stroke="${edge}" stroke-width=".8"/></svg>`;
+}
+function wingPath(f, far) { // f: 1 wings up, -1 down; the far wing a little smaller and behind
+  const k = far ? 0.75 : 1, ty = (-11 * f) * k, mx = far ? -1 : 0;
+  return `M ${mx - 3} 0 Q ${mx - 2} ${ty * 0.6} ${mx + 1 - 8 * k} ${ty} Q ${mx + 2} ${ty * 0.25 + 1} ${mx + 4} 0 Z`;
+}
+function spawnFlock() {
+  const n = 1 + (Math.random() < 0.5 ? 0 : Math.random() < 0.6 ? 1 : 2), dir = Math.random() < 0.5 ? 1 : -1, y0 = 8 + Math.random() * 55, speed = 5.5 + Math.random() * 3; // % of the width per second: slow
+  for (let i = 0; i < n; i++) {
+    const [col, edge] = BIRD_COLS[Math.random() * 4 | 0], el = document.createElement('div'), size = 18 + Math.random() * 10;
+    el.style.cssText = `position:absolute;width:${size}px;height:${size * 0.75}px;left:0;top:0;will-change:transform`;
+    el.innerHTML = birdSvg(col, edge); birdLayer.appendChild(el);
+    birds.push({ el, w1: el.querySelector('.w1'), w2: el.querySelector('.w2'), dir, x: dir > 0 ? -6 - i * (4 + Math.random() * 4) : 106 + i * (4 + Math.random() * 4), y: y0 + (Math.random() - 0.5) * 8,
+      vx: speed * (0.9 + Math.random() * 0.2), vy: 0, phase: 'flap', pt: 0.4 + Math.random() * 0.5, wing: Math.random() * 6, rate: 11 + Math.random() * 4, bob: Math.random() * 6 });
+  }
+}
+function updateBirds(dt) {
+  if (!started) return;
+  nextFlock -= dt; if (nextFlock <= 0) { spawnFlock(); nextFlock = 9 + Math.random() * 14; }
+  for (let i = birds.length - 1; i >= 0; i--) {
+    const b = birds[i]; b.pt -= dt;
+    if (b.pt <= 0) { // switch between a burst of wingbeats and a short glide, never quite the same length
+      if (b.phase === 'flap') { b.phase = 'glide'; b.pt = 0.25 + Math.random() * 0.45; } else { b.phase = 'flap'; b.pt = 0.35 + Math.random() * 0.6; if (Math.random() < 0.25) b.vx *= 0.85 + Math.random() * 0.3; }
+    }
+    let f;
+    if (b.phase === 'flap') { b.wing += dt * b.rate; f = Math.sin(b.wing); b.vy += (-9 - b.vy) * Math.min(1, dt * 4); } // up
+    else { f = -0.15 + 0.1 * Math.sin(b.wing += dt * 2); b.vy += (11 - b.vy) * Math.min(1, dt * 3); } // folded, dipping
+    b.x += b.dir * b.vx * dt; b.y = Math.max(2, Math.min(80, b.y + b.vy * dt * 0.18)); b.bob += dt * 3;
+    b.w1.setAttribute('d', wingPath(f, false)); b.w2.setAttribute('d', wingPath(f * 0.9, true));
+    const tilt = b.vy * 0.6 * b.dir + Math.sin(b.bob) * 3;
+    b.el.style.transform = `translate(${b.x}vw, ${b.y}vh) translate(-50%, -50%) scaleX(${b.dir}) rotate(${tilt}deg)`;
+    if (b.x < -20 || b.x > 120) { b.el.remove(); birds.splice(i, 1); }
+  }
+}
 // a big, thin dust cloud where a house lands
 const clouds = [], cloudGeo = new THREE.IcosahedronGeometry(1, 1);
 function dustCloud(x, y, z, size) {
@@ -1004,6 +1046,16 @@ function woodKnock(strength = 1) { // synthesised: a dull knock on a thick woode
   const bp = ctx.createBiquadFilter(), ng = ctx.createGain(); bp.type = 'bandpass'; bp.frequency.value = 420 * pitch; bp.Q.value = 1.2; ng.gain.value = 0.5;
   n.buffer = nb; n.connect(bp).connect(ng).connect(out); n.start(t0);
 }
+// nature ambience: a 75 s seamless loop (0.1 s of handles either side, so the loop points sit inside real audio), low under everything
+bufFetch.ambience = fetch('assets/sfx/ambience.mp3').then(r => r.arrayBuffer()).catch(() => null);
+const AMB_VOL = 0.22; let ambience = null;
+async function startAmbience() {
+  const ctx = audioCtx(), buf = await buffer('ambience'); if (!ctx || !buf || ambience) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = buf; src.loop = true; src.loopStart = 0.1; src.loopEnd = buf.duration - 0.1;
+  g.gain.setValueAtTime(0, ctx.currentTime); g.gain.linearRampToValueAtTime(AMB_VOL, ctx.currentTime + 3); // fades in
+  src.connect(g).connect(ctx.destination); src.start(ctx.currentTime, 0.1); ambience = { src, g };
+}
+function ambienceOn(on) { if (ambience && actx) ambience.g.gain.setTargetAtTime(on ? AMB_VOL : 0, actx.currentTime, 0.3); }
 const ENGINE_VOL = 0.16; // low, under everything else
 let engine = null;
 async function startEngine() {
@@ -1340,11 +1392,13 @@ function updateTracks(t) {
   trackGeo.attributes.color.needsUpdate = true;
 }
 
-document.addEventListener('visibilitychange', () => { if (document.hidden) updateEngine(0, false); }); // no engine noise from a hidden tab
+document.addEventListener('visibilitychange', () => { if (document.hidden) updateEngine(0, false); ambienceOn(!document.hidden); }); // no engine noise from a hidden tab
+let ambWasOn = true;
 let onScreen = true; // skip the work while the game is scrolled out of view (or its tab is hidden)
 new IntersectionObserver(e => { onScreen = e[0].isIntersecting; }).observe(canvas);
 function frame() {
   requestAnimationFrame(frame);
+  if (onScreen !== ambWasOn) { ambWasOn = onScreen; ambienceOn(onScreen && !document.hidden); }
   if (!onScreen) { clock.getDelta(); updateEngine(0, false); return; }
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   step(dt);
@@ -1373,7 +1427,7 @@ function frame() {
     dog.position.lerpVectors(dogJumpFrom, to, Math.min(1, dogJumpT)); dog.scale.setScalar(3.3 * SIZE_K * (DOG_WAIT_K + (1 - DOG_WAIT_K) * Math.min(1, dogJumpT))); dog.position.y += Math.sin(Math.min(1, dogJumpT) * Math.PI) * 4;
     if (dogJumpT >= 1) { dogState = 'aboard'; car.userData.seat.add(dog); dog.position.set(0, 0, 0); dog.rotation.set(0, Math.PI / 2, 0); dog.scale.setScalar(3.3 * SIZE_K / CAR_SCALE); } // same size as on the ground, standing across the rear bed
   } else { dog.rotation.y += ((dogSide > 0 ? Math.PI / 2 : -Math.PI / 2) - dog.rotation.y) * Math.min(1, dt * 3); dogTurnT -= dt; if (dogTurnT <= 0) { dogSide = -dogSide; dogTurnT = 3 + Math.random() * 4; } }
-  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateTrees(dt); updateNeedles(dt, t); updateHouses(t); updateClouds(dt); updateExhaust(dt); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
+  updateUnlocks(t); placeNewAddition(); updateBoxes(t); updateTrophy(t); updateWalkers(dt, t); updateTrees(dt); updateNeedles(dt, t); updateHouses(t); updateClouds(dt); updateExhaust(dt); updateBirds(dt); updateParticles(dt); updateShouts(dt); updateComics(); updateConfetti(dt);
   updateCarpet(t);
   // HUD
   fwdV.set(0, 0, 1).applyQuaternion(car.quaternion); const heading = Math.atan2(fwdV.x, -fwdV.z);
@@ -1395,10 +1449,10 @@ let frameNo = 0;
 
 $('loading').style.display = 'none';
 const startEl = $('start'); startEl.style.display = 'flex';
-const begin = () => { if (started) return; started = true; startEngine(); startEl.style.display = 'none'; canvas.focus(); toast('Follow the blue beams to the fragments'); };
+const begin = () => { if (started) return; started = true; startEngine(); startAmbience(); startEl.style.display = 'none'; canvas.focus(); toast('Follow the blue beams to the fragments'); };
 startEl.addEventListener('click', begin); $('startBtn').addEventListener('click', begin);
 window.addEventListener('keydown', begin, { once: true });
 frame();
 
 // for automated checks
-window.__coolcv = { setView(v) { VIEW = v; resize(); }, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
+window.__coolcv = { setView(v) { VIEW = v; resize(); }, spawnFlock, forceCarpet() { carpetOn = true; carpetT0 = clock.elapsedTime; }, camera, get trophyY() { return trophy.visible ? trophy.position.y : -1; }, get speedRatio() { return chassisBody.velocity.length() / VMAX; }, get holdT() { return holdT; }, renderer, scene, get shouts() { return shouts.length; }, get chevronsOn() { return chevrons.count; }, get confettiOn() { return cState.filter(q => q.life > 0).length; }, get axleSpin() { return wheelSpin; }, get driveMode() { return driveMode; }, walkers, world, CARPET_ROUTE, SCENERY, chassisBody, car, dog, pickups, groundAt, collect, keys, get dogState() { return dogState; }, get carpetOn() { return carpetOn; } };
