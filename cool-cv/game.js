@@ -860,7 +860,9 @@ const hudOn = { speed: false, map: false };
 const mm = $('minimap').getContext('2d');
 const mmBase = (() => { // pre-render the minimap terrain
   const c = document.createElement('canvas'); c.width = 150; c.height = 190; const g = c.getContext('2d'); const img = g.createImageData(150, 190);
-  const x0 = -122, x1 = 122, z0 = -122, z1 = 122;
+  let mnx = 1e9, mxx = -1e9, mnz = 1e9, mxz = -1e9; // the valley's own extent, so the map is centred in its frame
+  for (let x = -160; x <= 160; x += 1) for (let z = -160; z <= 160; z += 1) if (inside(x, z) && Math.hypot(x, z) <= rimAt(x, z) - 2) { mnx = Math.min(mnx, x); mxx = Math.max(mxx, x); mnz = Math.min(mnz, z); mxz = Math.max(mxz, z); }
+  const M = 6, x0 = mnx - M, x1 = mxx + M, z0 = mnz - M, z1 = mxz + M;
   for (let py = 0; py < 190; py++) for (let px = 0; px < 150; px++) {
     const x = x0 + (x1 - x0) * px / 149, z = z0 + (z1 - z0) * py / 189, y = groundAt(x, z), o = (px + py * 150) * 4;
     if (!inside(x, z) || Math.hypot(x, z) > rimAt(x, z) - 2) continue;

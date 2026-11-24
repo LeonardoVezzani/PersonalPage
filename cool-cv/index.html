@@ -39,8 +39,8 @@
   #superShake.shake { animation: superShake .13s linear infinite; }
   @keyframes superShake { 0% { transform: translate(0, 0) rotate(0); } 20% { transform: translate(1.1px, -.8px) rotate(1.4deg); } 40% { transform: translate(-1px, .6px) rotate(-1.2deg); } 60% { transform: translate(.7px, .9px) rotate(.8deg); } 80% { transform: translate(-.9px, -.7px) rotate(-1.5deg); } 100% { transform: translate(0, 0) rotate(0); } }
   @keyframes superBoom { 0% { transform: scale(1); } 18% { transform: scale(.72, .66); } 42% { transform: scale(1.55) rotate(-6deg); } 60% { transform: scale(.88) rotate(3deg); } 78% { transform: scale(1.12) rotate(-1deg); } 100% { transform: scale(1); } }
-  /* minimap: dark frame, thin towards the screen corner and heavier towards the scene (3 · 5 · 8 px), Fibonacci corners */
-  #minimap { left: 10px; top: 10px; width: 150px; height: 190px; display: none; background: #3a2a24; border-style: solid; border-color: #6b5444; border-width: 3px 5px 8px 3px; border-radius: 5px 8px 13px 8px; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  /* minimap: dark, with an even frame */
+  #minimap { left: 10px; top: 10px; width: 150px; height: 190px; display: none; background: #3a2a24; border: 5px solid #6b5444; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
   #toast { left: 50%; top: 18%; transform: translateX(-50%); font-size: 13px; font-weight: 700; padding: 7px 12px; opacity: 0; transition: opacity .3s; white-space: nowrap; }
   #finale, #start { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.3); }
   .panel { width: min(540px, 88vw); max-height: 82vh; overflow: auto; background: var(--bg); border: 2px solid var(--border); border-radius: 6px; padding: 16px 18px; font-size: 12.5px; line-height: 1.55; color: var(--fg); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
@@ -161,6 +161,6 @@
   </div>
 </div>
 
-<script type="module" src="./game.js?v=42"></script>
+<script type="module" src="./game.js?v=43"></script>
 </body>
 </html>
